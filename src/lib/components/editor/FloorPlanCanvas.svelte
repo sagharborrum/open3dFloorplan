@@ -87,6 +87,9 @@
   // Wall snap state for visual feedback
   let wallSnapInfo: { wallId: string; side: 'normal' | 'anti'; wallAngle: number } | null = $state(null);
 
+  // Door/window placement preview state
+  let placementPreview: { wallId: string; position: number; type: 'door' | 'window' } | null = $state(null);
+
   /**
    * Snap furniture position so its edge is flush against the nearest wall.
    * Returns adjusted position and rotation, or null if no wall is close enough.
@@ -913,6 +916,119 @@
     ctx.restore();
   }
 
+  function drawPlacementPreview() {
+    if (!placementPreview || !currentFloor) return;
+    const wall = currentFloor.walls.find(w => w.id === placementPreview!.wallId);
+    if (!wall) return;
+    const t = placementPreview.position;
+    const wpt = wallPointAt(wall, t);
+    const s = worldToScreen(wpt.x, wpt.y);
+    const tan = wallTangentAt(wall, t);
+    const ux = tan.x, uy = tan.y;
+    const nx = -uy, ny = ux;
+    const isDoor = placementPreview.type === 'door';
+    const itemWidth = isDoor ? 90 : 120; // default door 90cm, window 120cm
+    const halfW = (itemWidth / 2) * zoom;
+    const thickness = wallThicknessScreen(wall);
+
+    ctx.save();
+    ctx.globalAlpha = 0.5;
+
+    // Ghost gap (white area on wall)
+    ctx.fillStyle = '#fafafa';
+    const gux = ux * halfW, guy = uy * halfW;
+    const gnx = nx * (thickness / 2 + 1), gny = ny * (thickness / 2 + 1);
+    ctx.beginPath();
+    ctx.moveTo(s.x - gux + gnx, s.y - guy + gny);
+    ctx.lineTo(s.x + gux + gnx, s.y + guy + gny);
+    ctx.lineTo(s.x + gux - gnx, s.y + guy - gny);
+    ctx.lineTo(s.x - gux - gnx, s.y - guy - gny);
+    ctx.closePath();
+    ctx.fill();
+
+    if (isDoor) {
+      // Ghost swing arc
+      const wallAngle = Math.atan2(uy, ux);
+      const r = itemWidth * zoom;
+      const hingeX = s.x - ux * halfW;
+      const hingeY = s.y - uy * halfW;
+      const startAngle = wallAngle + Math.PI;
+      const endAngle = startAngle + Math.PI / 2;
+      ctx.strokeStyle = '#3b82f6';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(hingeX, hingeY, r, Math.min(startAngle, endAngle), Math.max(startAngle, endAngle));
+      ctx.stroke();
+      // Door panel
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(hingeX, hingeY);
+      ctx.lineTo(hingeX + r * Math.cos(endAngle), hingeY + r * Math.sin(endAngle));
+      ctx.stroke();
+      // Jamb ticks
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = '#3b82f6';
+      const jamb = thickness / 2 + 2;
+      for (const sign of [-1, 1]) {
+        const jx = s.x + ux * halfW * sign;
+        const jy = s.y + uy * halfW * sign;
+        ctx.beginPath();
+        ctx.moveTo(jx + nx * jamb, jy + ny * jamb);
+        ctx.lineTo(jx - nx * jamb, jy - ny * jamb);
+        ctx.stroke();
+      }
+    } else {
+      // Ghost window — 3 parallel lines
+      ctx.strokeStyle = '#3b82f6';
+      ctx.lineWidth = 2;
+      for (const off of [-2, 0, 2]) {
+        const ox = nx * off, oy = ny * off;
+        ctx.beginPath();
+        ctx.moveTo(s.x - ux * halfW + ox, s.y - uy * halfW + oy);
+        ctx.lineTo(s.x + ux * halfW + ox, s.y + uy * halfW + oy);
+        ctx.stroke();
+      }
+    }
+
+    ctx.globalAlpha = 1;
+
+    // "Click to place" tooltip
+    ctx.font = 'bold 11px system-ui, sans-serif';
+    const text = isDoor ? 'Click to place door' : 'Click to place window';
+    const tm = ctx.measureText(text);
+    const tx = s.x, ty = s.y - thickness / 2 - 24;
+    const pw = tm.width + 12, ph = 20;
+    ctx.fillStyle = '#1e293b';
+    ctx.beginPath();
+    ctx.roundRect(tx - pw / 2, ty - ph / 2, pw, ph, 4);
+    ctx.fill();
+    // Small triangle pointing down
+    ctx.beginPath();
+    ctx.moveTo(tx - 5, ty + ph / 2);
+    ctx.lineTo(tx + 5, ty + ph / 2);
+    ctx.lineTo(tx, ty + ph / 2 + 5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, tx, ty);
+
+    ctx.restore();
+
+    // Highlight the target wall
+    const ws = worldToScreen(wall.start.x, wall.start.y);
+    const we = worldToScreen(wall.end.x, wall.end.y);
+    ctx.strokeStyle = '#3b82f680';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 3]);
+    ctx.beginPath();
+    ctx.moveTo(ws.x, ws.y);
+    ctx.lineTo(we.x, we.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
   function drawAlignmentGuides(item: FurnitureItem) {
     if (!currentFloor) return;
     const threshold = 5;
@@ -1406,6 +1522,9 @@
 
     // Furniture placement preview
     if (currentPlacingId && currentTool === 'furniture') drawFurniturePreview();
+
+    // Door/window placement preview
+    if (placementPreview) drawPlacementPreview();
 
     // Wall in progress — draw close indicator at first point
     if (wallSequenceFirst && wallStart && currentTool === 'wall' && (wallStart.x !== wallSequenceFirst.x || wallStart.y !== wallSequenceFirst.y)) {
@@ -1982,6 +2101,18 @@
         }
       }
     }
+    // Door/window placement preview
+    if ((currentTool === 'door' || currentTool === 'window') && currentFloor) {
+      const wall = findWallAt(mousePos);
+      if (wall) {
+        placementPreview = { wallId: wall.id, position: positionOnWall(mousePos, wall), type: currentTool as 'door' | 'window' };
+      } else {
+        placementPreview = null;
+      }
+    } else {
+      placementPreview = null;
+    }
+
     if (measuring && measureStart) {
       measureEnd = { ...mousePos };
     }
@@ -2091,6 +2222,7 @@
     draggingHandle?.startsWith('resize') ? 'nwse-resize' :
     currentTool === 'select' ? 'default' :
     currentTool === 'furniture' ? 'copy' :
+    (currentTool === 'door' || currentTool === 'window') ? (placementPreview ? 'crosshair' : 'not-allowed') :
     'crosshair'
   );
 </script>
