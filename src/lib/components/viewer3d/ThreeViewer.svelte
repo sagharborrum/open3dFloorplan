@@ -26,12 +26,13 @@
   let moveBackward = false;
   let moveLeft = false;
   let moveRight = false;
+  let isShiftHeld = false;
   let canJump = false;
   let velocity = new THREE.Vector3();
   const direction = new THREE.Vector3();
-  const MOVE_SPEED = 200; // cm/s
-  const SPRINT_SPEED = 400; // cm/s
-  const EYE_HEIGHT = 160; // cm
+  let moveSpeed = $state(400); // cm/s
+  let sprintSpeed = $state(800); // cm/s
+  let eyeHeight = $state(160); // cm
 
   const WALL_THICKNESS = 15;
   const BASEBOARD_HEIGHT = 8;
@@ -650,6 +651,10 @@
       case 'KeyD':
         moveRight = true;
         break;
+      case 'ShiftLeft':
+      case 'ShiftRight':
+        isShiftHeld = true;
+        break;
       case 'Escape':
         exitWalkthroughMode();
         break;
@@ -660,6 +665,10 @@
     if (!walkthroughMode) return;
     
     switch (event.code) {
+      case 'ShiftLeft':
+      case 'ShiftRight':
+        isShiftHeld = false;
+        break;
       case 'ArrowUp':
       case 'KeyW':
         moveForward = false;
@@ -694,7 +703,7 @@
     // Position camera at eye height in center of floor plan or largest room
     if (currentFloor) {
       const rooms = detectRooms(currentFloor.walls);
-      let startPos = { x: 0, y: EYE_HEIGHT, z: 0 };
+      let startPos = { x: 0, y: eyeHeight, z: 0 };
       
       if (rooms.length > 0) {
         // Find largest room and position camera at its center
@@ -711,7 +720,7 @@
         const poly = getRoomPolygon(largestRoom, currentFloor.walls);
         if (poly.length > 0) {
           const centroid = roomCentroid(poly);
-          startPos = { x: centroid.x, y: EYE_HEIGHT, z: centroid.y };
+          startPos = { x: centroid.x, y: eyeHeight, z: centroid.y };
         }
       } else if (currentFloor.walls.length > 0) {
         // No rooms, use center of floor plan
@@ -722,7 +731,7 @@
             minZ = Math.min(minZ, p.y); maxZ = Math.max(maxZ, p.y);
           }
         }
-        startPos = { x: (minX + maxX) / 2, y: EYE_HEIGHT, z: (minZ + maxZ) / 2 };
+        startPos = { x: (minX + maxX) / 2, y: eyeHeight, z: (minZ + maxZ) / 2 };
       }
       
       camera.position.set(startPos.x, startPos.y, startPos.z);
@@ -748,8 +757,7 @@
     
     if (walkthroughMode) {
       const delta = 0.016; // Approximate 60fps
-      const isShiftPressed = false; // We'll implement shift detection later if needed
-      const speed = isShiftPressed ? SPRINT_SPEED : MOVE_SPEED;
+      const speed = isShiftHeld ? sprintSpeed : moveSpeed;
       
       velocity.x -= velocity.x * 10.0 * delta;
       velocity.z -= velocity.z * 10.0 * delta;
@@ -763,6 +771,7 @@
       
       pointerControls.moveRight(-velocity.x * delta);
       pointerControls.moveForward(-velocity.z * delta);
+      camera.position.y = eyeHeight; // Keep at eye height
     } else {
       controls.update();
     }
@@ -840,10 +849,36 @@
       </div>
     </div>
     
+    <!-- Controls Panel -->
+    <div class="absolute top-4 left-4 z-10 bg-black/70 text-white text-xs rounded-lg backdrop-blur-sm p-3 space-y-2 min-w-[180px]">
+      <div class="font-semibold text-white/90 mb-1">Walkthrough Controls</div>
+      <label class="flex items-center justify-between gap-2">
+        <span class="text-white/70">Eye Height</span>
+        <div class="flex items-center gap-1">
+          <input type="range" min="80" max="220" bind:value={eyeHeight} class="w-16 h-1 accent-blue-400" />
+          <span class="w-10 text-right">{eyeHeight}cm</span>
+        </div>
+      </label>
+      <label class="flex items-center justify-between gap-2">
+        <span class="text-white/70">Walk Speed</span>
+        <div class="flex items-center gap-1">
+          <input type="range" min="100" max="1000" step="50" bind:value={moveSpeed} class="w-16 h-1 accent-blue-400" />
+          <span class="w-10 text-right">{moveSpeed}</span>
+        </div>
+      </label>
+      <label class="flex items-center justify-between gap-2">
+        <span class="text-white/70">Sprint Speed</span>
+        <div class="flex items-center gap-1">
+          <input type="range" min="200" max="2000" step="100" bind:value={sprintSpeed} class="w-16 h-1 accent-blue-400" />
+          <span class="w-10 text-right">{sprintSpeed}</span>
+        </div>
+      </label>
+    </div>
+
     <!-- Help Text -->
     <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10">
       <div class="bg-black/70 text-white text-sm px-4 py-2 rounded-lg backdrop-blur-sm">
-        WASD to move • Mouse to look • ESC to exit
+        WASD/Arrows to move • Mouse to look • Shift to sprint • ESC to exit
       </div>
     </div>
   {/if}
