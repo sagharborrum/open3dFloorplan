@@ -293,8 +293,17 @@ export function updateFurniture(id: string, updates: Partial<FurnitureItem>) {
 
 export function updateRoom(id: string, updates: Partial<{ name: string; floorTexture: string }>) {
   mutate((f) => {
-    const r = f.rooms.find((r) => r.id === id);
-    if (r) Object.assign(r, updates);
+    let r = f.rooms.find((r) => r.id === id);
+    if (r) {
+      Object.assign(r, updates);
+    } else {
+      // Room not in floor.rooms yet (dynamically detected) — add it so changes persist on save
+      const detected = get(detectedRoomsStore).find((r) => r.id === id);
+      if (detected) {
+        const newRoom = { ...detected, ...updates };
+        f.rooms.push(newRoom);
+      }
+    }
   });
 }
 

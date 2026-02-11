@@ -1529,7 +1529,9 @@
     if (hash === lastWallHash) return;
     lastWallHash = hash;
     const newRooms = detectRooms(currentFloor.walls);
-    // Preserve user-edited room names by matching on wall sets
+    // Preserve user-edited room data by matching on wall sets
+    // Check both in-memory detected rooms and persisted floor.rooms
+    const savedRooms = currentFloor.rooms || [];
     for (const nr of newRooms) {
       const nrWalls = new Set(nr.walls);
       const existing = detectedRooms.find(old => {
@@ -1540,6 +1542,17 @@
         nr.id = existing.id;
         nr.name = existing.name;
         nr.floorTexture = existing.floorTexture;
+      } else {
+        // Check persisted rooms (for data that survives page reload)
+        const saved = savedRooms.find(sr => {
+          const srWalls = new Set(sr.walls);
+          return srWalls.size === nrWalls.size && [...nrWalls].every(w => srWalls.has(w));
+        });
+        if (saved) {
+          nr.id = saved.id;
+          nr.name = saved.name;
+          if (saved.floorTexture) nr.floorTexture = saved.floorTexture;
+        }
       }
     }
     detectedRooms = newRooms;

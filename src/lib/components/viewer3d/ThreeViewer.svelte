@@ -590,6 +590,23 @@
 
       const geo = new THREE.ShapeGeometry(shape);
       
+      // Compute room bounds for UV normalization
+      const bounds = poly.reduce((b, p) => ({
+        minX: Math.min(b.minX, p.x), maxX: Math.max(b.maxX, p.x),
+        minY: Math.min(b.minY, p.y), maxY: Math.max(b.maxY, p.y),
+      }), { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity });
+      const roomW = bounds.maxX - bounds.minX;
+      const roomH = bounds.maxY - bounds.minY;
+
+      // Normalize ShapeGeometry UVs from world coords to [0,1] range
+      const uvAttr = geo.attributes.uv;
+      for (let i = 0; i < uvAttr.count; i++) {
+        const u = (uvAttr.getX(i) - bounds.minX) / (roomW || 1);
+        const v = (uvAttr.getY(i) - bounds.minY) / (roomH || 1);
+        uvAttr.setXY(i, u, v);
+      }
+      uvAttr.needsUpdate = true;
+
       // Use room's floor material or fallback to color coding
       let material: THREE.MeshStandardMaterial;
       if (room.floorTexture) {
@@ -598,14 +615,8 @@
         if (floorCanvas) {
           const tex = new THREE.CanvasTexture(floorCanvas);
           tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-          // Tile every 200cm
+          // Tile every 200cm — now UVs are 0-1, so repeat = room size / tile size
           const tileSizeCm = 200;
-          const bounds = poly.reduce((b, p) => ({
-            minX: Math.min(b.minX, p.x), maxX: Math.max(b.maxX, p.x),
-            minY: Math.min(b.minY, p.y), maxY: Math.max(b.maxY, p.y),
-          }), { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity });
-          const roomW = bounds.maxX - bounds.minX;
-          const roomH = bounds.maxY - bounds.minY;
           tex.repeat.set(roomW / tileSizeCm, roomH / tileSizeCm);
           material = new THREE.MeshStandardMaterial({
             map: tex,
