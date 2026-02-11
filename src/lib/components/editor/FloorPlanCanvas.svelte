@@ -470,16 +470,32 @@
     }
   }
 
-  const ROOM_FILLS = [
-    'rgba(167, 139, 250, 0.18)', // violet
-    'rgba(96, 165, 250, 0.18)',  // blue
-    'rgba(52, 211, 153, 0.18)',  // green
-    'rgba(251, 191, 36, 0.18)',  // amber
-    'rgba(248, 113, 113, 0.18)', // red
-    'rgba(244, 114, 182, 0.18)', // pink
-    'rgba(45, 212, 191, 0.18)',  // teal
-    'rgba(251, 146, 60, 0.18)',  // orange
+  const ROOM_FILLS_BY_TYPE: Record<string, string> = {
+    'Living Room': 'rgba(96, 165, 250, 0.20)',   // blue
+    'Bedroom':     'rgba(167, 139, 250, 0.20)',   // violet
+    'Kitchen':     'rgba(251, 191, 36, 0.20)',    // amber
+    'Bathroom':    'rgba(45, 212, 191, 0.20)',    // teal
+    'Dining Room': 'rgba(251, 146, 60, 0.20)',    // orange
+    'Office':      'rgba(52, 211, 153, 0.20)',    // green
+    'Hallway':     'rgba(156, 163, 175, 0.15)',   // gray
+    'Closet':      'rgba(244, 114, 182, 0.15)',   // pink
+    'Laundry':     'rgba(129, 140, 248, 0.18)',   // indigo
+    'Garage':      'rgba(163, 163, 163, 0.18)',   // neutral
+  };
+  const ROOM_FILLS_DEFAULT = [
+    'rgba(167, 139, 250, 0.18)',
+    'rgba(96, 165, 250, 0.18)',
+    'rgba(52, 211, 153, 0.18)',
+    'rgba(251, 191, 36, 0.18)',
+    'rgba(248, 113, 113, 0.18)',
+    'rgba(244, 114, 182, 0.18)',
+    'rgba(45, 212, 191, 0.18)',
+    'rgba(251, 146, 60, 0.18)',
   ];
+
+  function getRoomFill(room: Room, index: number): string {
+    return ROOM_FILLS_BY_TYPE[room.name] ?? ROOM_FILLS_DEFAULT[index % ROOM_FILLS_DEFAULT.length];
+  }
 
   function drawRooms() {
     if (!currentFloor) return;
@@ -488,7 +504,7 @@
       const poly = getRoomPolygon(room, currentFloor.walls);
       if (poly.length < 3) continue;
       const screenPoly = poly.map(p => worldToScreen(p.x, p.y));
-      ctx.fillStyle = ROOM_FILLS[ri % ROOM_FILLS.length];
+      ctx.fillStyle = getRoomFill(room, ri);
       ctx.beginPath();
       ctx.moveTo(screenPoly[0].x, screenPoly[0].y);
       for (let i = 1; i < screenPoly.length; i++) ctx.lineTo(screenPoly[i].x, screenPoly[i].y);

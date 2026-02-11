@@ -63,6 +63,35 @@
     updateRoom(selectedRoom.id, { floorTexture: texture });
   }
 
+  const roomTypes = [
+    { id: 'living', label: 'Living Room', icon: '🛋️' },
+    { id: 'bedroom', label: 'Bedroom', icon: '🛏️' },
+    { id: 'kitchen', label: 'Kitchen', icon: '🍳' },
+    { id: 'bathroom', label: 'Bathroom', icon: '🚿' },
+    { id: 'dining', label: 'Dining Room', icon: '🍽️' },
+    { id: 'office', label: 'Office', icon: '💻' },
+    { id: 'hallway', label: 'Hallway', icon: '🚶' },
+    { id: 'closet', label: 'Closet', icon: '👔' },
+    { id: 'laundry', label: 'Laundry', icon: '🧺' },
+    { id: 'garage', label: 'Garage', icon: '🚗' },
+    { id: 'custom', label: 'Custom', icon: '✏️' },
+  ];
+
+  function onRoomType(e: Event) {
+    if (!selectedRoom) return;
+    const typeId = (e.target as HTMLSelectElement).value;
+    const rt = roomTypes.find(t => t.id === typeId);
+    if (rt && rt.id !== 'custom') {
+      updateRoom(selectedRoom.id, { name: rt.label });
+    }
+  }
+
+  let selectedRoomType = $derived(() => {
+    if (!selectedRoom) return 'custom';
+    const match = roomTypes.find(t => t.label === selectedRoom!.name);
+    return match ? match.id : 'custom';
+  });
+
   let hasSelection = $derived(!!selectedWall || !!selectedDoor || !!selectedWindow || !!selectedRoom);
 </script>
 
@@ -157,6 +186,14 @@
       Room Properties
     </h3>
     <div class="space-y-3">
+      <label class="block">
+        <span class="text-xs text-gray-500">Room Type</span>
+        <select value={selectedRoomType()} onchange={onRoomType} class="w-full px-2 py-1 border border-gray-200 rounded text-sm">
+          {#each roomTypes as rt}
+            <option value={rt.id}>{rt.icon} {rt.label}</option>
+          {/each}
+        </select>
+      </label>
       <label class="block">
         <span class="text-xs text-gray-500">Room Name</span>
         <input type="text" value={selectedRoom.name} oninput={onRoomName} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
