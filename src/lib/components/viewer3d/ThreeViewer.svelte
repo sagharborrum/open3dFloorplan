@@ -176,10 +176,10 @@
     controls.update();
   }
 
-  function generateWallTexture(textureId: string, color: string): THREE.CanvasTexture {
+  /** Generate a wall texture. wallWidth/wallHeight in cm to set proper tiling. */
+  function generateWallTexture(textureId: string, color: string, wallWidth: number = 300, wallHeight: number = 280): THREE.CanvasTexture {
     const canvas = getWallTextureCanvas(textureId, color);
     if (!canvas) {
-      // Fallback: solid color
       const c = document.createElement('canvas');
       c.width = 64; c.height = 64;
       const cx = c.getContext('2d')!;
@@ -191,7 +191,9 @@
     }
     const tex = new THREE.CanvasTexture(canvas);
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(0.004, 0.004); // Scale for wall dimensions in cm
+    // Each texture tile covers ~200cm of real wall
+    const tileSizeCm = 200;
+    tex.repeat.set(wallWidth / tileSizeCm, wallHeight / tileSizeCm);
     return tex;
   }
 
@@ -246,10 +248,11 @@
       let interiorMat: THREE.MeshStandardMaterial;
       let exteriorMat: THREE.MeshStandardMaterial;
       if (wall.texture) {
-        const wallTex = generateWallTexture(wall.texture, wall.color || '#888888');
-        wallTex.repeat.set(0.003, 0.003);
+        const wLen = Math.hypot(wall.end.x - wall.start.x, wall.end.y - wall.start.y);
+        const wallTex = generateWallTexture(wall.texture, wall.color || '#888888', wLen, wall.height);
         interiorMat = new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.85 });
-        exteriorMat = new THREE.MeshStandardMaterial({ map: wallTex.clone(), roughness: 0.85 });
+        const extTex = generateWallTexture(wall.texture, wall.color || '#888888', wLen, wall.height);
+        exteriorMat = new THREE.MeshStandardMaterial({ map: extTex, roughness: 0.85 });
       } else if (wallColor) {
         interiorMat = new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.9 });
         exteriorMat = new THREE.MeshStandardMaterial({ color: wallColor.clone().offsetHSL(0, -0.05, -0.1), roughness: 0.85 });
