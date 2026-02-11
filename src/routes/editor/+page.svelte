@@ -1,11 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { page } from '$app/stores';
-  import { goto } from '$app/navigation';
   import { currentProject, viewMode, createDefaultProject } from '$lib/stores/project';
   import { localStore } from '$lib/services/datastore';
   import TopBar from '$lib/components/toolbar/TopBar.svelte';
   import BuildPanel from '$lib/components/sidebar/BuildPanel.svelte';
+  import PropertiesPanel from '$lib/components/sidebar/PropertiesPanel.svelte';
   import FloorPlanCanvas from '$lib/components/editor/FloorPlanCanvas.svelte';
   import ThreeViewer from '$lib/components/viewer3d/ThreeViewer.svelte';
 
@@ -25,7 +24,6 @@
         return;
       }
     }
-    // New project
     currentProject.set(createDefaultProject());
     ready = true;
   });
@@ -43,6 +41,7 @@
           <ThreeViewer />
         {/if}
       </div>
+      <PropertiesPanel />
     </div>
   </div>
 {:else}

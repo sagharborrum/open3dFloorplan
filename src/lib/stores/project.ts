@@ -120,3 +120,61 @@ export function removeElement(id: string) {
     f.furniture = f.furniture.filter((fi) => fi.id !== id);
   });
 }
+
+export function updateWall(id: string, updates: Partial<Wall>) {
+  mutate((f) => {
+    const w = f.walls.find((w) => w.id === id);
+    if (w) Object.assign(w, updates);
+  });
+}
+
+export function updateDoor(id: string, updates: Partial<Door>) {
+  mutate((f) => {
+    const d = f.doors.find((d) => d.id === id);
+    if (d) Object.assign(d, updates);
+  });
+}
+
+export function updateWindow(id: string, updates: Partial<Win>) {
+  mutate((f) => {
+    const w = f.windows.find((w) => w.id === id);
+    if (w) Object.assign(w, updates);
+  });
+}
+
+export function updateRoom(id: string, updates: Partial<{ name: string; floorTexture: string }>) {
+  mutate((f) => {
+    const r = f.rooms.find((r) => r.id === id);
+    if (r) Object.assign(r, updates);
+  });
+}
+
+export function addFloor(name: string) {
+  const p = get(currentProject);
+  if (!p) return;
+  snapshot();
+  const floor: Floor = { id: uid(), name, walls: [], rooms: [], doors: [], windows: [], furniture: [] };
+  p.floors.push(floor);
+  p.activeFloorId = floor.id;
+  p.updatedAt = new Date();
+  currentProject.set({ ...p });
+}
+
+export function setActiveFloor(floorId: string) {
+  const p = get(currentProject);
+  if (!p) return;
+  if (p.floors.some((f) => f.id === floorId)) {
+    p.activeFloorId = floorId;
+    currentProject.set({ ...p });
+  }
+}
+
+export function updateProjectName(name: string) {
+  const p = get(currentProject);
+  if (!p) return;
+  p.name = name;
+  p.updatedAt = new Date();
+  currentProject.set({ ...p });
+}
+
+export const selectedRoomId = writable<string | null>(null);
