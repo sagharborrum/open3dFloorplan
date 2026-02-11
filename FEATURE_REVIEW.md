@@ -9,7 +9,7 @@ Systematic comparison. Each feature gets: ✅ done, 🔧 needs work, ❌ missing
 - ✅ Close loop (click near start or double-click)
 - ✅ Dimension labels on walls
 - 🔧 **Wall thickness visual** — planner5d shows thick filled walls with proper joins; ours are thin lines
-- 🔧 **Wall drag-to-resize** — planner5d lets you grab a wall endpoint and drag to resize/reshape
+- ✅ **Wall drag-to-resize** — grab a wall endpoint and drag to resize/reshape; connected corner endpoints move together
 - 🔧 **Wall segment editing** — click a wall to select, drag midpoint to move parallel
 - ❌ **Curved walls** — planner5d supports arcs
 - ❌ **Wall splitting** — click middle of wall to split into two segments

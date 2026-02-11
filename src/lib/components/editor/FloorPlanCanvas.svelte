@@ -67,8 +67,9 @@
   let currentDoorType: Door['type'] = $state('single');
   let currentWindowType: Win['type'] = $state('standard');
 
-  // Wall endpoint drag state
+  // Wall endpoint drag state (includes all connected walls at the corner)
   let draggingWallEndpoint: { wallId: string; endpoint: 'start' | 'end' } | null = $state(null);
+  let draggingConnectedEndpoints: { wallId: string; endpoint: 'start' | 'end' }[] = $state([]);
 
   // Resize/rotate handle drag state
   type HandleType = 'resize-tl' | 'resize-tr' | 'resize-bl' | 'resize-br' | 'rotate';
@@ -157,6 +158,23 @@
 
   function worldToScreen(wx: number, wy: number): { x: number; y: number } {
     return { x: (wx - camX) * zoom + width / 2, y: (wy - camY) * zoom + height / 2 };
+  }
+
+  /** Find all other wall endpoints that share the same point (within tolerance) */
+  function findConnectedEndpoints(pt: Point, excludeWallId: string): { wallId: string; endpoint: 'start' | 'end' }[] {
+    const tolerance = 2;
+    const results: { wallId: string; endpoint: 'start' | 'end' }[] = [];
+    if (!currentFloor) return results;
+    for (const w of currentFloor.walls) {
+      if (w.id === excludeWallId) continue;
+      if (Math.hypot(w.start.x - pt.x, w.start.y - pt.y) < tolerance) {
+        results.push({ wallId: w.id, endpoint: 'start' });
+      }
+      if (Math.hypot(w.end.x - pt.x, w.end.y - pt.y) < tolerance) {
+        results.push({ wallId: w.id, endpoint: 'end' });
+      }
+    }
+    return results;
   }
 
   function magneticSnap(p: Point): Point & { snappedToEndpoint?: boolean } {
@@ -1380,11 +1398,13 @@
           const epThreshold = 15 / zoom;
           if (Math.hypot(wp.x - selWall.start.x, wp.y - selWall.start.y) < epThreshold) {
             draggingWallEndpoint = { wallId: selWall.id, endpoint: 'start' };
+            draggingConnectedEndpoints = findConnectedEndpoints(selWall.start, selWall.id);
             commitFurnitureMove(); // uses same undo snapshot mechanism
             return;
           }
           if (Math.hypot(wp.x - selWall.end.x, wp.y - selWall.end.y) < epThreshold) {
             draggingWallEndpoint = { wallId: selWall.id, endpoint: 'end' };
+            draggingConnectedEndpoints = findConnectedEndpoints(selWall.end, selWall.id);
             commitFurnitureMove();
             return;
           }
@@ -1489,6 +1509,10 @@
         }
       }
       moveWallEndpoint(draggingWallEndpoint.wallId, draggingWallEndpoint.endpoint, pt);
+      // Move all connected endpoints together
+      for (const conn of draggingConnectedEndpoints) {
+        moveWallEndpoint(conn.wallId, conn.endpoint, pt);
+      }
     }
     if (draggingHandle && currentSelectedId && currentFloor) {
       const fi = currentFloor.furniture.find(f => f.id === currentSelectedId);
@@ -1571,6 +1595,7 @@
     draggingWindowId = null;
     draggingHandle = null;
     draggingWallEndpoint = null;
+    draggingConnectedEndpoints = [];
     wallSnapInfo = null;
     if (measuring && measureStart && measureEnd) {
       // Keep measurement visible until next click
