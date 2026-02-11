@@ -11,7 +11,9 @@
   });
 
   async function newProject() {
-    const p = createDefaultProject();
+    const name = prompt('Project name:', 'Untitled Project');
+    if (!name) return;
+    const p = createDefaultProject(name);
     currentProject.set(p);
     await localStore.save(p);
     goto(`/editor?id=${p.id}`);
@@ -67,9 +69,14 @@
         {#each projects as project}
           <div class="bg-white rounded-lg border border-gray-200 p-4 flex items-center justify-between hover:shadow-sm transition-shadow">
             <a href="/editor?id={project.id}" class="flex-1">
-              <h3 class="font-medium text-gray-800">{project.name}</h3>
+              <h3 class="font-medium text-gray-800">{project.name || 'Untitled Project'}</h3>
               <p class="text-xs text-gray-400 mt-1">Last edited: {new Date(project.updatedAt).toLocaleDateString()}</p>
             </a>
+            <button
+              onclick={async (e) => { e.preventDefault(); const name = prompt('Rename project:', project.name); if (name) { const p = await localStore.load(project.id); if (p) { p.name = name; p.updatedAt = new Date(); await localStore.save(p); projects = await localStore.list(); } } }}
+              class="text-gray-400 hover:text-gray-600 text-sm ml-2"
+              title="Rename"
+            >✏️</button>
             {#if confirmDeleteId === project.id}
               <div class="flex items-center gap-2 ml-4">
                 <span class="text-xs text-gray-500">Delete?</span>
