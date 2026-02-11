@@ -216,6 +216,12 @@ export function updateProjectName(name: string) {
   currentProject.set({ ...p });
 }
 
+export function loadProject(project: Project) {
+  undoStack.length = 0;
+  redoStack.length = 0;
+  currentProject.set(project);
+}
+
 export const selectedRoomId = writable<string | null>(null);
 /** catalogId currently being placed (null = not placing) */
 export const placingFurnitureId = writable<string | null>(null);

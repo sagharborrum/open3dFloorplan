@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { currentProject, viewMode, undo, redo, addFloor, removeFloor, setActiveFloor, updateProjectName } from '$lib/stores/project';
+  import { currentProject, viewMode, undo, redo, addFloor, removeFloor, setActiveFloor, updateProjectName, loadProject } from '$lib/stores/project';
   import { localStore } from '$lib/services/datastore';
   import { get } from 'svelte/store';
-  import type { Floor } from '$lib/models/types';
-  import { exportAsPNG, exportAsJSON } from '$lib/utils/export';
+  import type { Floor, Project } from '$lib/models/types';
+  import { exportAsPNG, exportAsJSON, exportAsSVG } from '$lib/utils/export';
 
   let projectName = $state('');
   let mode = $state<'2d' | '3d'>('2d');
@@ -83,6 +83,35 @@
     if (p) exportAsJSON(p);
     exportOpen = false;
   }
+
+  function onExportSVG() {
+    const p = get(currentProject);
+    if (p) exportAsSVG(p);
+    exportOpen = false;
+  }
+
+  function onImportJSON() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const project = JSON.parse(text) as Project;
+        if (!project.floors || !project.id) {
+          alert('Invalid project file.');
+          return;
+        }
+        loadProject(project);
+      } catch {
+        alert('Failed to parse project file.');
+      }
+    };
+    input.click();
+    exportOpen = false;
+  }
 </script>
 
 <div class="h-12 bg-gradient-to-r from-slate-800 to-slate-700 flex items-center px-4 gap-3 shrink-0 shadow-sm">
@@ -153,7 +182,10 @@
       <div class="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200 py-1 w-48 z-50">
         <button class="w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left" onclick={onExport2DPNG}>📷 Export 2D as PNG</button>
         <button class="w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left" onclick={onExport3DPNG}>🏠 Export 3D as PNG</button>
+        <button class="w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left" onclick={onExportSVG}>✏️ Export as SVG</button>
         <button class="w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left" onclick={onExportJSON}>📄 Download Project JSON</button>
+        <div class="h-px bg-gray-200 my-1"></div>
+        <button class="w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left" onclick={onImportJSON}>📂 Import Project JSON</button>
       </div>
     {/if}
   </div>
