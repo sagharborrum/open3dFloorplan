@@ -23,7 +23,7 @@
   function onPresetClick(presetId: string) {
     const preset = roomPresets.find(p => p.id === presetId);
     if (preset) {
-      placePreset(preset, { x: 100, y: 100 });
+      placePreset(preset, { x: -200, y: -150 });
     }
   }
 
