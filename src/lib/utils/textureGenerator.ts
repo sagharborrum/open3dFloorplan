@@ -523,7 +523,7 @@ export function getFloorTextureCanvas(materialId: string): HTMLCanvasElement | n
     img.onload = () => {
       imageCache.set(loadKey, img);
       cache.delete(cacheKey);
-      if (onTextureLoadCallback) onTextureLoadCallback();
+      notifyTextureLoad();
     };
     img.src = url;
   }
@@ -532,12 +532,13 @@ export function getFloorTextureCanvas(materialId: string): HTMLCanvasElement | n
 }
 
 /** Callback to invoke when a photo texture finishes loading (triggers re-render) */
-let onTextureLoadCallback: (() => void) | null = null;
-export function setTextureLoadCallback(cb: () => void) { onTextureLoadCallback = cb; }
+const textureLoadCallbacks: Set<() => void> = new Set();
+function notifyTextureLoad() { for (const cb of textureLoadCallbacks) cb(); }
+export function setTextureLoadCallback(cb: () => void) { textureLoadCallbacks.add(cb); }
 
 export function getWallTextureCanvas(textureId: string, color: string): HTMLCanvasElement | null {
   // Try photo texture first
-  const photo = loadPhotoTexture(textureId, onTextureLoadCallback ?? undefined);
+  const photo = loadPhotoTexture(textureId, notifyTextureLoad);
   if (photo) return photo;
 
   // Fallback to procedural
