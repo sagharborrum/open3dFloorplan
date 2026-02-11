@@ -74,20 +74,20 @@
       Wall Properties
     </h3>
     <div class="space-y-3">
-      <div>
-        <label class="text-xs text-gray-500">Length (cm)</label>
+      <label class="block">
+        <span class="text-xs text-gray-500">Length (cm)</span>
         <input type="number" value={wallLength} disabled class="w-full px-2 py-1 border border-gray-200 rounded text-sm bg-gray-50" />
-      </div>
-      <div>
-        <label class="text-xs text-gray-500">Thickness (cm)</label>
+      </label>
+      <label class="block">
+        <span class="text-xs text-gray-500">Thickness (cm)</span>
         <input type="number" value={selectedWall.thickness} oninput={onWallThickness} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
-      </div>
-      <div>
-        <label class="text-xs text-gray-500">Height (cm)</label>
+      </label>
+      <label class="block">
+        <span class="text-xs text-gray-500">Height (cm)</span>
         <input type="number" value={selectedWall.height} oninput={onWallHeight} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
-      </div>
+      </label>
       <div>
-        <label class="text-xs text-gray-500">Color</label>
+        <span class="text-xs text-gray-500">Color</span>
         <div class="flex gap-1 flex-wrap mt-1">
           {#each wallColors as wc}
             <button
@@ -97,7 +97,10 @@
               onclick={() => { if (selectedWall) updateWall(selectedWall.id, { color: wc.color }); }}
             ></button>
           {/each}
-          <input type="color" value={selectedWall.color} oninput={onWallColor} class="w-6 h-6 p-0 border-0 cursor-pointer" />
+          <label class="w-6 h-6 p-0 border-0 cursor-pointer">
+            <span class="sr-only">Custom color</span>
+            <input type="color" value={selectedWall.color} oninput={onWallColor} class="w-6 h-6 p-0 border-0 cursor-pointer" />
+          </label>
         </div>
       </div>
     </div>
@@ -108,24 +111,24 @@
       Door Properties
     </h3>
     <div class="space-y-3">
-      <div>
-        <label class="text-xs text-gray-500">Width (cm)</label>
+      <label class="block">
+        <span class="text-xs text-gray-500">Width (cm)</span>
         <input type="number" value={selectedDoor.width} oninput={onDoorWidth} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
-      </div>
-      <div>
-        <label class="text-xs text-gray-500">Type</label>
+      </label>
+      <label class="block">
+        <span class="text-xs text-gray-500">Type</span>
         <select value={selectedDoor.type} onchange={onDoorType} class="w-full px-2 py-1 border border-gray-200 rounded text-sm">
           <option value="single">Single</option>
           <option value="double">Double</option>
         </select>
-      </div>
-      <div>
-        <label class="text-xs text-gray-500">Swing Direction</label>
+      </label>
+      <label class="block">
+        <span class="text-xs text-gray-500">Swing Direction</span>
         <select value={selectedDoor.swingDirection} onchange={onDoorSwing} class="w-full px-2 py-1 border border-gray-200 rounded text-sm">
           <option value="left">Left</option>
           <option value="right">Right</option>
         </select>
-      </div>
+      </label>
     </div>
 
   {:else if selectedWindow}
@@ -134,18 +137,18 @@
       Window Properties
     </h3>
     <div class="space-y-3">
-      <div>
-        <label class="text-xs text-gray-500">Width (cm)</label>
+      <label class="block">
+        <span class="text-xs text-gray-500">Width (cm)</span>
         <input type="number" value={selectedWindow.width} oninput={onWindowWidth} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
-      </div>
-      <div>
-        <label class="text-xs text-gray-500">Height (cm)</label>
+      </label>
+      <label class="block">
+        <span class="text-xs text-gray-500">Height (cm)</span>
         <input type="number" value={selectedWindow.height} oninput={onWindowHeight} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
-      </div>
-      <div>
-        <label class="text-xs text-gray-500">Sill Height (cm)</label>
+      </label>
+      <label class="block">
+        <span class="text-xs text-gray-500">Sill Height (cm)</span>
         <input type="number" value={selectedWindow.sillHeight} oninput={onWindowSill} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
-      </div>
+      </label>
     </div>
 
   {:else if selectedRoom}
@@ -154,16 +157,16 @@
       Room Properties
     </h3>
     <div class="space-y-3">
-      <div>
-        <label class="text-xs text-gray-500">Room Name</label>
+      <label class="block">
+        <span class="text-xs text-gray-500">Room Name</span>
         <input type="text" value={selectedRoom.name} oninput={onRoomName} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
-      </div>
+      </label>
       <div>
-        <label class="text-xs text-gray-500">Area</label>
+        <span class="text-xs text-gray-500">Area</span>
         <p class="text-sm text-gray-700">{selectedRoom.area} m²</p>
       </div>
       <div>
-        <label class="text-xs text-gray-500">Floor Material</label>
+        <span class="text-xs text-gray-500">Floor Material</span>
         <div class="grid grid-cols-3 gap-1 mt-1">
           {#each floorMaterials as mat}
             <button

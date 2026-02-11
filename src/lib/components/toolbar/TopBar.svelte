@@ -85,7 +85,7 @@
   }
 </script>
 
-<div class="h-12 bg-gradient-to-r from-green-600 to-green-700 flex items-center px-4 gap-3 shrink-0 shadow-sm">
+<div class="h-12 bg-gradient-to-r from-slate-800 to-slate-700 flex items-center px-4 gap-3 shrink-0 shadow-sm">
   {#if editingName}
     <input
       type="text"
@@ -93,7 +93,6 @@
       onblur={onNameBlur}
       onkeydown={onNameKeydown}
       class="bg-white/20 text-white font-semibold px-2 py-0.5 rounded border border-white/30 outline-none text-sm w-40"
-      autofocus
     />
   {:else}
     <button
@@ -109,7 +108,7 @@
   <div class="flex items-center gap-1">
     {#each floors as fl}
       <button
-        class="px-2 py-0.5 text-xs rounded transition-colors {fl.id === activeFloorId ? 'bg-white text-green-700 font-semibold' : 'text-white/80 hover:bg-white/10'}"
+        class="px-2 py-0.5 text-xs rounded transition-colors {fl.id === activeFloorId ? 'bg-white text-slate-800 font-semibold' : 'text-white/80 hover:bg-white/10'}"
         onclick={() => setActiveFloor(fl.id)}
         ondblclick={() => onRemoveFloor(fl.id)}
         title={fl.id === activeFloorId ? 'Active floor (dbl-click to remove)' : 'Click to switch, dbl-click to remove'}
@@ -134,11 +133,11 @@
   <div class="flex bg-white/15 rounded-full p-0.5">
     <button
       onclick={() => setMode('2d')}
-      class="px-3 py-1 text-xs font-semibold rounded-full transition-colors {mode === '2d' ? 'bg-white text-green-700' : 'text-white/80 hover:text-white'}"
+      class="px-3 py-1 text-xs font-semibold rounded-full transition-colors {mode === '2d' ? 'bg-white text-slate-800' : 'text-white/80 hover:text-white'}"
     >2D</button>
     <button
       onclick={() => setMode('3d')}
-      class="px-3 py-1 text-xs font-semibold rounded-full transition-colors {mode === '3d' ? 'bg-white text-green-700' : 'text-white/80 hover:text-white'}"
+      class="px-3 py-1 text-xs font-semibold rounded-full transition-colors {mode === '3d' ? 'bg-white text-slate-800' : 'text-white/80 hover:text-white'}"
     >3D</button>
   </div>
 
@@ -159,7 +158,7 @@
     {/if}
   </div>
 
-  <button onclick={save} class="px-3 py-1.5 text-sm bg-white text-green-700 font-semibold rounded-lg hover:bg-green-50 transition-colors shadow-sm">
+  <button onclick={save} class="px-3 py-1.5 text-sm bg-white text-slate-800 font-semibold rounded-lg hover:bg-blue-50 transition-colors shadow-sm">
     Save
   </button>
 </div>
