@@ -1,6 +1,7 @@
 import type { Project } from '$lib/models/types';
 import { getCatalogItem } from '$lib/utils/furnitureCatalog';
 import { detectRooms, getRoomPolygon, roomCentroid } from '$lib/utils/roomDetection';
+import jsPDF from 'jspdf';
 
 function download(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -113,4 +114,74 @@ export function exportAs3DPNG(renderer: THREE.WebGLRenderer) {
   renderer.domElement.toBlob((blob) => {
     if (blob) download(blob, 'floorplan-3d.png');
   });
+}
+
+export function exportPDF(project: Project) {
+  const floor = project.floors.find(f => f.id === project.activeFloorId) ?? project.floors[0];
+  if (!floor || floor.walls.length === 0) return;
+
+  // Create PDF in A4 landscape orientation
+  const pdf = new jsPDF({
+    orientation: 'landscape',
+    unit: 'mm',
+    format: 'a4'
+  });
+
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  
+  // Get the 2D canvas (floor plan canvas)
+  const canvas = document.querySelector('canvas') as HTMLCanvasElement;
+  if (!canvas) {
+    alert('Canvas not found. Please make sure the 2D view is visible.');
+    return;
+  }
+
+  // Convert canvas to image data
+  const imgData = canvas.toDataURL('image/png');
+  
+  // Calculate dimensions to fit the image on the page with margins
+  const margin = 20;
+  const maxWidth = pageWidth - (margin * 2);
+  const maxHeight = pageHeight - (margin * 3) - 30; // Extra space for title and footer
+  
+  // Calculate aspect ratio and fitting dimensions
+  const aspectRatio = canvas.width / canvas.height;
+  let imgWidth = maxWidth;
+  let imgHeight = maxWidth / aspectRatio;
+  
+  if (imgHeight > maxHeight) {
+    imgHeight = maxHeight;
+    imgWidth = maxHeight * aspectRatio;
+  }
+  
+  // Center the image
+  const imgX = (pageWidth - imgWidth) / 2;
+  const imgY = margin + 20; // Space for title
+  
+  // Add title
+  pdf.setFontSize(18);
+  pdf.setFont(undefined, 'bold');
+  const title = `Floor Plan — ${floor.name}`;
+  const titleWidth = pdf.getTextWidth(title);
+  pdf.text(title, (pageWidth - titleWidth) / 2, margin + 10);
+  
+  // Add the floor plan image
+  pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth, imgHeight);
+  
+  // Add scale indicator (approximate)
+  pdf.setFontSize(10);
+  pdf.setFont(undefined, 'normal');
+  const scaleText = 'Scale: 1:1 (approximate)';
+  pdf.text(scaleText, margin, imgY + imgHeight + 10);
+  
+  // Add date in footer
+  const today = new Date().toLocaleDateString();
+  const footerText = `Generated on ${today}`;
+  const footerWidth = pdf.getTextWidth(footerText);
+  pdf.text(footerText, pageWidth - margin - footerWidth, pageHeight - 10);
+  
+  // Save the PDF
+  const filename = `${project.name || 'floorplan'}.pdf`;
+  pdf.save(filename);
 }

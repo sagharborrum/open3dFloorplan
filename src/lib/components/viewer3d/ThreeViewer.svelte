@@ -93,6 +93,20 @@
     controls.dampingFactor = 0.08;
     controls.target.set(0, 100, 0);
     controls.maxPolarAngle = Math.PI / 2.05;
+    
+    // Initialize PointerLock controls for walkthrough mode
+    pointerControls = new PointerLockControls(camera, renderer.domElement);
+    
+    // Keyboard event listeners for walkthrough
+    document.addEventListener('keydown', onKeyDown, false);
+    document.addEventListener('keyup', onKeyUp, false);
+    
+    // ESC key to exit walkthrough mode
+    pointerControls.addEventListener('unlock', () => {
+      if (walkthroughMode) {
+        exitWalkthroughMode();
+      }
+    });
 
     // Lights — improved multi-source setup
     const ambient = new THREE.AmbientLight(0xffffff, 0.35);
@@ -587,9 +601,143 @@
     return segs;
   }
 
+  function onKeyDown(event: KeyboardEvent) {
+    if (!walkthroughMode) return;
+    
+    switch (event.code) {
+      case 'ArrowUp':
+      case 'KeyW':
+        moveForward = true;
+        break;
+      case 'ArrowLeft':
+      case 'KeyA':
+        moveLeft = true;
+        break;
+      case 'ArrowDown':
+      case 'KeyS':
+        moveBackward = true;
+        break;
+      case 'ArrowRight':
+      case 'KeyD':
+        moveRight = true;
+        break;
+      case 'Escape':
+        exitWalkthroughMode();
+        break;
+    }
+  }
+
+  function onKeyUp(event: KeyboardEvent) {
+    if (!walkthroughMode) return;
+    
+    switch (event.code) {
+      case 'ArrowUp':
+      case 'KeyW':
+        moveForward = false;
+        break;
+      case 'ArrowLeft':
+      case 'KeyA':
+        moveLeft = false;
+        break;
+      case 'ArrowDown':
+      case 'KeyS':
+        moveBackward = false;
+        break;
+      case 'ArrowRight':
+      case 'KeyD':
+        moveRight = false;
+        break;
+    }
+  }
+  
+  function toggleWalkthroughMode() {
+    if (walkthroughMode) {
+      exitWalkthroughMode();
+    } else {
+      enterWalkthroughMode();
+    }
+  }
+  
+  function enterWalkthroughMode() {
+    walkthroughMode = true;
+    controls.enabled = false;
+    
+    // Position camera at eye height in center of floor plan or largest room
+    if (currentFloor) {
+      const rooms = detectRooms(currentFloor.walls);
+      let startPos = { x: 0, y: EYE_HEIGHT, z: 0 };
+      
+      if (rooms.length > 0) {
+        // Find largest room and position camera at its center
+        let largestRoom = rooms[0];
+        let largestArea = 0;
+        
+        for (const room of rooms) {
+          if (room.area > largestArea) {
+            largestArea = room.area;
+            largestRoom = room;
+          }
+        }
+        
+        const poly = getRoomPolygon(largestRoom, currentFloor.walls);
+        if (poly.length > 0) {
+          const centroid = roomCentroid(poly);
+          startPos = { x: centroid.x, y: EYE_HEIGHT, z: centroid.y };
+        }
+      } else if (currentFloor.walls.length > 0) {
+        // No rooms, use center of floor plan
+        let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+        for (const w of currentFloor.walls) {
+          for (const p of [w.start, w.end]) {
+            minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+            minZ = Math.min(minZ, p.y); maxZ = Math.max(maxZ, p.y);
+          }
+        }
+        startPos = { x: (minX + maxX) / 2, y: EYE_HEIGHT, z: (minZ + maxZ) / 2 };
+      }
+      
+      camera.position.set(startPos.x, startPos.y, startPos.z);
+      camera.lookAt(startPos.x, startPos.y, startPos.z - 100); // Look forward initially
+    }
+    
+    pointerControls.lock();
+  }
+  
+  function exitWalkthroughMode() {
+    walkthroughMode = false;
+    controls.enabled = true;
+    velocity.set(0, 0, 0);
+    moveForward = moveBackward = moveLeft = moveRight = false;
+    
+    if (document.pointerLockElement) {
+      document.exitPointerLock();
+    }
+  }
+
   function animate() {
     animId = requestAnimationFrame(animate);
-    controls.update();
+    
+    if (walkthroughMode) {
+      const delta = 0.016; // Approximate 60fps
+      const isShiftPressed = false; // We'll implement shift detection later if needed
+      const speed = isShiftPressed ? SPRINT_SPEED : MOVE_SPEED;
+      
+      velocity.x -= velocity.x * 10.0 * delta;
+      velocity.z -= velocity.z * 10.0 * delta;
+      
+      direction.z = Number(moveForward) - Number(moveBackward);
+      direction.x = Number(moveRight) - Number(moveLeft);
+      direction.normalize(); // Ensures consistent movement regardless of diagonal movement
+      
+      if (moveForward || moveBackward) velocity.z -= direction.z * speed * delta;
+      if (moveLeft || moveRight) velocity.x -= direction.x * speed * delta;
+      
+      pointerControls.moveRight(-velocity.x * delta);
+      pointerControls.moveForward(-velocity.z * delta);
+    } else {
+      controls.update();
+    }
+    
     renderer.render(scene, camera);
   }
 
@@ -618,9 +766,56 @@
       resizeObs.disconnect();
       unsub();
       cancelAnimationFrame(animId);
+      document.removeEventListener('keydown', onKeyDown, false);
+      document.removeEventListener('keyup', onKeyUp, false);
       renderer.dispose();
     };
   });
 </script>
 
-<div bind:this={container} class="w-full h-full"></div>
+<div bind:this={container} class="w-full h-full relative">
+  <!-- Walkthrough Mode Toggle Button -->
+  <button
+    onclick={toggleWalkthroughMode}
+    class="absolute top-4 right-4 z-10 bg-black/70 text-white p-2 rounded-lg hover:bg-black/80 transition-colors"
+    title={walkthroughMode ? 'Exit Walkthrough Mode' : 'Enter Walkthrough Mode'}
+  >
+    {#if walkthroughMode}
+      <!-- Exit/Eye closed icon -->
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+        <line x1="1" y1="1" x2="23" y2="23"/>
+      </svg>
+    {:else}
+      <!-- Walking person icon -->
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="4" r="2"/>
+        <path d="M10 16v6"/>
+        <path d="M14 16v6"/>
+        <path d="M12 6h2l4 4"/>
+        <path d="M10 14l2-2 1 2"/>
+      </svg>
+    {/if}
+  </button>
+
+  {#if walkthroughMode}
+    <!-- Crosshair -->
+    <div class="absolute inset-0 pointer-events-none z-10 flex items-center justify-center">
+      <div class="w-4 h-4">
+        <svg width="16" height="16" viewBox="0 0 16 16" class="text-white drop-shadow-lg">
+          <line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" stroke-width="1"/>
+          <line x1="8" y1="10" x2="8" y2="14" stroke="currentColor" stroke-width="1"/>
+          <line x1="2" y1="8" x2="6" y2="8" stroke="currentColor" stroke-width="1"/>
+          <line x1="10" y1="8" x2="14" y2="8" stroke="currentColor" stroke-width="1"/>
+        </svg>
+      </div>
+    </div>
+    
+    <!-- Help Text -->
+    <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10">
+      <div class="bg-black/70 text-white text-sm px-4 py-2 rounded-lg backdrop-blur-sm">
+        WASD to move • Mouse to look • ESC to exit
+      </div>
+    </div>
+  {/if}
+</div>
