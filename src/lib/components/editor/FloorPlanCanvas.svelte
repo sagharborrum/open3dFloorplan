@@ -160,30 +160,75 @@
     ctx.fill();
     ctx.stroke();
 
-    // Dimension label
+    // Dimension line with arrowheads (architectural style)
     const wlen = wallLength(w);
+    if (wlen < 10) return; // skip tiny walls
     const mx = (s.x + e.x) / 2;
     const my = (s.y + e.y) / 2;
-    const offsetDist = thickness / 2 + 18;
+    const offsetDist = thickness / 2 + 20;
     const nnx = (-dy / len);
     const nny = (dx / len);
-    const dimX = mx + nnx * offsetDist;
-    const dimY = my + nny * offsetDist;
+
+    // Pick dimension line side (flip if out of bounds)
+    let dimSide = 1;
+    const testX = mx + nnx * offsetDist;
+    const testY = my + nny * offsetDist;
+    if (testX < 10 || testX > width - 10 || testY < 10 || testY > height - 10) dimSide = -1;
+
+    const dOffX = nnx * offsetDist * dimSide;
+    const dOffY = nny * offsetDist * dimSide;
+
+    // Extension lines (from wall endpoints to dimension line)
+    const extLen = offsetDist + 4;
+    ctx.strokeStyle = '#9ca3af';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(s.x + nnx * (thickness / 2 + 2) * dimSide, s.y + nny * (thickness / 2 + 2) * dimSide);
+    ctx.lineTo(s.x + nnx * extLen * dimSide, s.y + nny * extLen * dimSide);
+    ctx.moveTo(e.x + nnx * (thickness / 2 + 2) * dimSide, e.y + nny * (thickness / 2 + 2) * dimSide);
+    ctx.lineTo(e.x + nnx * extLen * dimSide, e.y + nny * extLen * dimSide);
+    ctx.stroke();
+
+    // Dimension line
+    const ds = { x: s.x + dOffX, y: s.y + dOffY };
+    const de = { x: e.x + dOffX, y: e.y + dOffY };
+    const dimMx = (ds.x + de.x) / 2;
+    const dimMy = (ds.y + de.y) / 2;
 
     ctx.fillStyle = '#374151';
-    ctx.font = `${Math.max(10, 11 * zoom)}px sans-serif`;
+    const fontSize = Math.max(10, 11 * zoom);
+    ctx.font = `${fontSize}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     const dimLabel = `${(wlen / 100).toFixed(2)} m`;
-    const dimMetrics = ctx.measureText(dimLabel);
-    const halfW = dimMetrics.width / 2;
-    let finalDimX = dimX;
-    let finalDimY = dimY;
-    if (dimX - halfW < 2 || dimX + halfW > width - 2 || dimY < 8 || dimY > height - 8) {
-      finalDimX = mx - nnx * offsetDist;
-      finalDimY = my - nny * offsetDist;
+    const textW = ctx.measureText(dimLabel).width;
+
+    // Draw dimension line with gap for text
+    const ux2 = dx / len, uy2 = dy / len;
+    const halfGap = textW / 2 + 4;
+    ctx.strokeStyle = '#6b7280';
+    ctx.lineWidth = 0.75;
+    ctx.beginPath();
+    ctx.moveTo(ds.x, ds.y);
+    ctx.lineTo(dimMx - ux2 * halfGap, dimMy - uy2 * halfGap);
+    ctx.moveTo(dimMx + ux2 * halfGap, dimMy + uy2 * halfGap);
+    ctx.lineTo(de.x, de.y);
+    ctx.stroke();
+
+    // Arrowheads (tick marks — 45° slash at each end, architectural style)
+    const tickSize = Math.max(4, 5 * zoom);
+    ctx.strokeStyle = '#6b7280';
+    ctx.lineWidth = 1;
+    for (const pt of [ds, de]) {
+      ctx.beginPath();
+      ctx.moveTo(pt.x - (ux2 + nnx * dimSide) * tickSize, pt.y - (uy2 + nny * dimSide) * tickSize);
+      ctx.lineTo(pt.x + (ux2 + nnx * dimSide) * tickSize, pt.y + (uy2 + nny * dimSide) * tickSize);
+      ctx.stroke();
     }
-    ctx.fillText(dimLabel, finalDimX, finalDimY);
+
+    // Dimension text
+    ctx.fillStyle = '#374151';
+    ctx.fillText(dimLabel, dimMx, dimMy);
   }
 
   function drawDoorOnWall(wall: Wall, door: Door) {
@@ -215,7 +260,7 @@
     ctx.closePath();
     ctx.fill();
 
-    // Door arc (quarter circle) — radius = door width
+    // Door arc (quarter circle) — radius = door panel length (= opening width)
     const r = door.width * zoom;
     const wallAngle = Math.atan2(dy, dx);
     const swingDir = door.swingDirection === 'left' ? 1 : -1;
@@ -225,24 +270,36 @@
     const startAngle = wallAngle;
     const endAngle = wallAngle + swingDir * (Math.PI / 2);
 
-    ctx.strokeStyle = '#555';
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([4, 3]);
+    // Swing arc — solid thin line (architectural standard)
+    ctx.strokeStyle = '#666';
+    ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.arc(hingeX, hingeY, r, Math.min(startAngle, endAngle), Math.max(startAngle, endAngle));
     ctx.stroke();
-    ctx.setLineDash([]);
 
-    // Door panel line (from hinge to end of arc)
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = '#555';
+    // Door panel line (from hinge to end of arc) — thicker to show the door leaf
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = '#444';
     ctx.beginPath();
     ctx.moveTo(hingeX, hingeY);
     ctx.lineTo(hingeX + r * Math.cos(endAngle), hingeY + r * Math.sin(endAngle));
     ctx.stroke();
 
+    // Door jamb ticks (small perpendicular lines at gap edges)
+    const jamb = thickness / 2 + 2;
+    ctx.strokeStyle = '#444';
+    ctx.lineWidth = 1.5;
+    for (const sign of [-1, 1]) {
+      const jx = s.x + ux * halfDoor * sign;
+      const jy = s.y + uy * halfDoor * sign;
+      ctx.beginPath();
+      ctx.moveTo(jx + nx * jamb, jy + ny * jamb);
+      ctx.lineTo(jx - nx * jamb, jy - ny * jamb);
+      ctx.stroke();
+    }
+
     // Hinge dot
-    ctx.fillStyle = '#555';
+    ctx.fillStyle = '#444';
     ctx.beginPath();
     ctx.arc(hingeX, hingeY, 2.5, 0, Math.PI * 2);
     ctx.fill();
