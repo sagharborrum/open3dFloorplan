@@ -66,8 +66,9 @@
 
   <!-- Shortcuts overlay -->
   {#if showHelp}
-    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onclick={() => showHelp = false} role="dialog">
-      <div class="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full mx-4" onclick={(e) => e.stopPropagation()}>
+    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onclick={() => showHelp = false} onkeydown={(e) => { if (e.key === 'Escape') showHelp = false; }} role="dialog" tabindex="-1" aria-label="Keyboard Shortcuts">
+      <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+      <div class="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full mx-4" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="document">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-lg font-bold text-slate-800">Keyboard Shortcuts</h2>
           <button class="text-gray-400 hover:text-gray-600 text-xl" onclick={() => showHelp = false}>✕</button>
