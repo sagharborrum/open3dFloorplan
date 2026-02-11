@@ -62,7 +62,7 @@ Systematic comparison. Each feature gets: ✅ done, 🔧 needs work, ❌ missing
 - ✅ **Lighting quality** — 3-point setup: warm key sun, cool fill light, rim backlight; hemisphere boost
 - 🔧 **3D furniture** — procedural models (sofas, beds, tables, etc.) not imported glTF assets
 - ✅ **Material/texture on walls** — wall color property reflected in 3D (interior + exterior)
-- ❌ **Ceiling** — planner5d shows ceiling in 3D
+- ✅ **Ceiling** — per-room ceiling at wall height, visible from inside
 - ✅ **First-person walkthrough** — PointerLock walkthrough with WASD look, arrow move, sprint, adjustable eye height/speed
 
 ## 7. UI / Layout

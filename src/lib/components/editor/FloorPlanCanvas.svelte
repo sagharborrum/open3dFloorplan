@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { activeFloor, selectedTool, selectedElementId, selectedElementIds, selectedRoomId, addWall, addDoor, addWindow, updateWall, moveWallEndpoint, updateDoor, updateWindow, addFurniture, moveFurniture, commitFurnitureMove, rotateFurniture, setFurnitureRotation, scaleFurniture, removeElement, placingFurnitureId, placingRotation, placingDoorType, placingWindowType, detectedRoomsStore, duplicateDoor, duplicateWindow, duplicateFurniture, duplicateWall, moveWallParallel, splitWall, snapEnabled, placingStair, addStair, moveStair, updateStair, calibrationMode, calibrationPoints, updateBackgroundImage } from '$lib/stores/project';
+  import { activeFloor, selectedTool, selectedElementId, selectedElementIds, selectedRoomId, addWall, addDoor, addWindow, updateWall, moveWallEndpoint, updateDoor, updateWindow, addFurniture, moveFurniture, commitFurnitureMove, rotateFurniture, setFurnitureRotation, scaleFurniture, removeElement, placingFurnitureId, placingRotation, placingDoorType, placingWindowType, detectedRoomsStore, duplicateDoor, duplicateWindow, duplicateFurniture, duplicateWall, moveWallParallel, splitWall, snapEnabled, placingStair, addStair, moveStair, updateStair, calibrationMode, calibrationPoints, updateBackgroundImage, canvasZoom } from '$lib/stores/project';
   import type { Point, Wall, Door, Window as Win, FurnitureItem, Stair } from '$lib/models/types';
   import type { Floor, Room } from '$lib/models/types';
   import { detectRooms, getRoomPolygon, roomCentroid } from '$lib/utils/roomDetection';
@@ -19,6 +19,9 @@
   let camX = $state(0);
   let camY = $state(0);
   let zoom = $state(1);
+  // Sync zoom with shared store
+  canvasZoom.subscribe(v => { zoom = v; });
+  $effect(() => { canvasZoom.set(zoom); });
 
   // Wall drawing state
   let wallStart: Point | null = $state(null);

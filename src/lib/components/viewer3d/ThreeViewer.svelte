@@ -73,23 +73,39 @@
   function init() {
     scene = new THREE.Scene();
 
-    // Gradient background
+    // Sky gradient background (larger for better quality)
     const c = document.createElement('canvas');
-    c.width = 2; c.height = 256;
+    c.width = 4; c.height = 512;
     const cx = c.getContext('2d')!;
-    const grad = cx.createLinearGradient(0, 0, 0, 256);
-    grad.addColorStop(0, '#87ceeb');
-    grad.addColorStop(0.5, '#c8e6f0');
-    grad.addColorStop(1, '#e8e0d4');
+    const grad = cx.createLinearGradient(0, 0, 0, 512);
+    grad.addColorStop(0, '#4a90d9');    // deeper sky blue at zenith
+    grad.addColorStop(0.3, '#87ceeb');  // sky blue
+    grad.addColorStop(0.5, '#b8ddf0');  // pale horizon
+    grad.addColorStop(0.55, '#f0ece4'); // warm horizon line
+    grad.addColorStop(0.7, '#d4cfc4');  // muted ground far
+    grad.addColorStop(1.0, '#b8b0a0'); // ground near
     cx.fillStyle = grad;
-    cx.fillRect(0, 0, 2, 256);
+    cx.fillRect(0, 0, 4, 512);
     const bgTex = new THREE.CanvasTexture(c);
     scene.background = bgTex;
+
+    // Ground plane (extends beyond building)
+    const groundGeo = new THREE.PlaneGeometry(20000, 20000);
+    const groundMat = new THREE.MeshStandardMaterial({
+      color: 0xd4cfc4,
+      roughness: 0.95,
+      metalness: 0
+    });
+    const ground = new THREE.Mesh(groundGeo, groundMat);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.5;
+    ground.receiveShadow = true;
+    scene.add(ground);
 
     camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 1, 20000);
     camera.position.set(800, 600, 800);
 
-    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
     renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.shadowMap.enabled = true;
@@ -905,6 +921,16 @@
     renderer.setSize(w, h);
   }
 
+  function takeScreenshot() {
+    if (!renderer || !scene || !camera) return;
+    renderer.render(scene, camera);
+    const dataUrl = renderer.domElement.toDataURL('image/png');
+    const link = document.createElement('a');
+    link.download = 'floorplan-3d.png';
+    link.href = dataUrl;
+    link.click();
+  }
+
   onMount(() => {
     init();
     animate();
@@ -940,6 +966,18 @@
 </script>
 
 <div bind:this={container} class="w-full h-full relative">
+  <!-- 3D Screenshot Button -->
+  <button
+    onclick={takeScreenshot}
+    class="absolute top-4 right-16 z-10 bg-black/70 text-white p-2 rounded-lg hover:bg-black/80 transition-colors"
+    title="Save 3D Screenshot"
+  >
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+      <circle cx="12" cy="13" r="4"/>
+    </svg>
+  </button>
+
   <!-- Walkthrough Mode Toggle Button -->
   <button
     onclick={toggleWalkthroughMode}

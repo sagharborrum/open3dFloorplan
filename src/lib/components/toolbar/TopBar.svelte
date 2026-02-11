@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { currentProject, viewMode, undo, redo, addFloor, removeFloor, setActiveFloor, updateProjectName, loadProject, createDefaultProject, snapEnabled } from '$lib/stores/project';
+  import { currentProject, viewMode, undo, redo, addFloor, removeFloor, setActiveFloor, updateProjectName, loadProject, createDefaultProject, snapEnabled, canvasZoom } from '$lib/stores/project';
   import { localStore } from '$lib/services/datastore';
   import { get } from 'svelte/store';
   import type { Floor, Project } from '$lib/models/types';
@@ -236,6 +236,27 @@
       class="px-3 py-1 text-xs font-semibold rounded-full transition-colors {mode === '3d' ? 'bg-white text-slate-800' : 'text-white/80 hover:text-white'}"
     >3D</button>
   </div>
+
+  <!-- Zoom controls (2D only) -->
+  {#if mode === '2d'}
+    <div class="flex items-center gap-1 bg-white/15 rounded-full p-0.5">
+      <button
+        onclick={() => canvasZoom.update(z => Math.max(0.1, z / 1.25))}
+        class="w-7 h-7 flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-colors text-sm font-bold"
+        title="Zoom Out (−)"
+      >−</button>
+      <button
+        onclick={() => canvasZoom.set(1)}
+        class="px-2 py-1 text-xs font-medium text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-colors min-w-[3rem] text-center"
+        title="Reset Zoom (100%)"
+      >{Math.round($canvasZoom * 100)}%</button>
+      <button
+        onclick={() => canvasZoom.update(z => Math.min(10, z * 1.25))}
+        class="w-7 h-7 flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-colors text-sm font-bold"
+        title="Zoom In (+)"
+      >+</button>
+    </div>
+  {/if}
 
   <div class="h-5 w-px bg-white/20"></div>
 

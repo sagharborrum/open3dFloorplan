@@ -495,3 +495,6 @@ export function duplicateWall(id: string): string | null {
   });
   return newId;
 }
+
+// Zoom store for 2D canvas — shared between FloorPlanCanvas and TopBar
+export const canvasZoom = writable<number>(1);
