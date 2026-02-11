@@ -119,7 +119,7 @@
     const cz = (minZ + maxZ) / 2;
     const size = Math.max(maxX - minX, maxZ - minZ, 200);
     controls.target.set(cx, 100, cz);
-    camera.position.set(cx + size * 0.8, size * 0.7, cz + size * 0.8);
+    camera.position.set(cx + size * 1.8, size * 1.4, cz + size * 1.8);
     controls.update();
   }
 
@@ -127,7 +127,7 @@
     while (wallGroup.children.length) wallGroup.remove(wallGroup.children[0]);
 
     const interiorMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 });
-    const exteriorMat = new THREE.MeshStandardMaterial({ color: 0x9e8e7e, roughness: 0.85 });
+    const exteriorMat = new THREE.MeshStandardMaterial({ color: 0xd4cfc9, roughness: 0.85 });
     const baseboardMat = new THREE.MeshStandardMaterial({ color: 0xe8e0d4, roughness: 0.7 });
 
     for (const wall of floor.walls) {
