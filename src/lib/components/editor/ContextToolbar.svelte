@@ -68,6 +68,12 @@
     const door = elementInfo.door as Door;
     updateDoor(door.id, { swingDirection: door.swingDirection === 'left' ? 'right' : 'left' });
   }
+
+  function onFlipSide() {
+    if (!elementInfo || elementInfo.type !== 'door') return;
+    const door = elementInfo.door as Door;
+    updateDoor(door.id, { flipSide: !door.flipSide });
+  }
 </script>
 
 {#if elementInfo}
@@ -86,10 +92,17 @@
     {#if elementInfo.type === 'door'}
       <button
         class="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-100 text-gray-600 hover:text-gray-800 transition-colors"
-        title="Flip swing direction"
+        title="Flip swing direction (left/right)"
         onclick={onFlipSwing}
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
+      </button>
+      <button
+        class="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-100 text-gray-600 hover:text-gray-800 transition-colors"
+        title="Flip opening side (inward/outward)"
+        onclick={onFlipSide}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M12 3v18"/><path d="M8 8l-4 4 4 4M16 8l4 4-4 4"/></svg>
       </button>
     {/if}
     <div class="w-px h-5 bg-gray-200"></div>
