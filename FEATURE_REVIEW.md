@@ -49,7 +49,7 @@ Systematic comparison. Each feature gets: ✅ done, 🔧 needs work, ❌ missing
 - ✅ Zoom-to-fit (F key)
 - 🔧 **Canvas background** — planner5d uses very light gray with subtle grid; ours may be too dark/bright
 - 🔧 **Dimension arrows** — planner5d shows clean dimension lines with arrowheads outside the wall
-- ❌ **Ruler along edges** — planner5d has measurement rulers on canvas borders
+- ✅ **Ruler along edges** — horizontal/vertical rulers with auto-scaling ticks, mouse position indicators
 - ❌ **Area dimensions** — show room dimensions (width × depth) in the room center
 
 ## 6. 3D View
@@ -125,5 +125,5 @@ Systematic comparison. Each feature gets: ✅ done, 🔧 needs work, ❌ missing
 ### Phase 5: Advanced
 17. ✅ Door/window catalog — 6 door types (single, double, sliding, french, pocket, bifold) + 5 window types (standard, fixed, casement, sliding, bay) with catalog grid in BuildPanel, unique 2D renderings per type, type selector in PropertiesPanel
 18. ✅ Contextual toolbar — floating toolbar appears above selected elements with duplicate, delete, and flip-swing (doors) buttons
-19. Rulers on canvas edges
+19. ✅ Rulers on canvas edges — horizontal/vertical rulers with auto-scaling tick marks (cm/m), mouse position indicators, toggle button
 20. Curved walls
