@@ -425,6 +425,33 @@
     ctx.fillText(`${Math.round(dist)} cm`, mx, my - 6);
   }
 
+  function drawWallJoints(floor: Floor, selId: string | null) {
+    // Find endpoints shared by 2+ walls and draw filled circles to cover corner gaps
+    const epMap = new Map<string, { x: number; y: number; thickness: number; selected: boolean }[]>();
+    for (const w of floor.walls) {
+      const sel = w.id === selId;
+      for (const ep of [w.start, w.end]) {
+        const key = `${Math.round(ep.x)},${Math.round(ep.y)}`;
+        if (!epMap.has(key)) epMap.set(key, []);
+        epMap.get(key)!.push({ x: ep.x, y: ep.y, thickness: w.thickness, selected: sel });
+      }
+    }
+    for (const [, entries] of epMap) {
+      if (entries.length < 2) continue;
+      const anySelected = entries.some(e => e.selected);
+      const maxThickness = Math.max(...entries.map(e => e.thickness));
+      const s = worldToScreen(entries[0].x, entries[0].y);
+      const r = Math.max(maxThickness * zoom * 0.15, 3) / 2 + 0.5;
+      ctx.fillStyle = anySelected ? '#93c5fd' : '#4b5563';
+      ctx.strokeStyle = anySelected ? '#3b82f6' : '#1f2937';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+  }
+
   function drawSnapPoints() {
     if (!currentFloor || !showGrid) return;
     ctx.fillStyle = '#3b82f640';
@@ -530,6 +557,10 @@
     drawSnapPoints();
 
     for (const w of floor.walls) drawWall(w, w.id === selId);
+
+    // Draw filled joints where walls share endpoints (covers corner gaps)
+    drawWallJoints(floor, selId);
+
     for (const d of floor.doors) {
       const wall = floor.walls.find((w) => w.id === d.wallId);
       if (wall) drawDoorOnWall(wall, d);
