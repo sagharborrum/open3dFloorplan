@@ -132,6 +132,10 @@
     return Math.hypot(w.end.x - w.start.x, w.end.y - w.start.y);
   }
 
+  function wallThicknessScreen(w: Wall): number {
+    return Math.max(w.thickness * zoom, 4);
+  }
+
   function drawWall(w: Wall, selected: boolean) {
     const s = worldToScreen(w.start.x, w.start.y);
     const e = worldToScreen(w.end.x, w.end.y);
@@ -140,20 +144,12 @@
     const len = Math.hypot(dx, dy);
     if (len < 1) return;
 
-    const thickness = Math.max(w.thickness * zoom * 0.15, 3);
+    const thickness = wallThicknessScreen(w);
     const nx = (-dy / len) * thickness / 2;
     const ny = (dx / len) * thickness / 2;
 
-    // Drop shadow for depth
-    if (!selected) {
-      ctx.save();
-      ctx.shadowColor = 'rgba(0,0,0,0.15)';
-      ctx.shadowBlur = 4 * zoom;
-      ctx.shadowOffsetX = 1;
-      ctx.shadowOffsetY = 1;
-    }
-    ctx.fillStyle = selected ? '#93c5fd' : '#4b5563';
-    ctx.strokeStyle = selected ? '#3b82f6' : '#1f2937';
+    ctx.fillStyle = selected ? '#93c5fd' : '#404040';
+    ctx.strokeStyle = selected ? '#3b82f6' : '#333333';
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(s.x + nx, s.y + ny);
@@ -163,17 +159,8 @@
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-    if (!selected) ctx.restore();
 
-    // Endpoint circles
-    ctx.fillStyle = selected ? '#3b82f6' : '#9ca3af';
-    for (const p of [s, e]) {
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, Math.max(3, thickness / 2 + 1), 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // Dimension with arrowheads
+    // Dimension label
     const wlen = wallLength(w);
     const mx = (s.x + e.x) / 2;
     const my = (s.y + e.y) / 2;
@@ -183,40 +170,19 @@
     const dimX = mx + nnx * offsetDist;
     const dimY = my + nny * offsetDist;
 
-    // Dimension line with arrows
-    const ds = { x: s.x + nnx * offsetDist, y: s.y + nny * offsetDist };
-    const de = { x: e.x + nnx * offsetDist, y: e.y + nny * offsetDist };
-    ctx.strokeStyle = '#9ca3af';
-    ctx.lineWidth = 0.5;
-    ctx.beginPath();
-    ctx.moveTo(ds.x, ds.y); ctx.lineTo(de.x, de.y);
-    ctx.stroke();
-    // Arrowheads
-    const arrowSize = 5;
-    const ux = dx / len, uy = dy / len;
-    for (const [pt, dir] of [[ds, 1], [de, -1]] as [typeof ds, number][]) {
-      ctx.beginPath();
-      ctx.moveTo(pt.x, pt.y);
-      ctx.lineTo(pt.x + (ux * dir + nnx * 0.5) * arrowSize, pt.y + (uy * dir + nny * 0.5) * arrowSize);
-      ctx.moveTo(pt.x, pt.y);
-      ctx.lineTo(pt.x + (ux * dir - nnx * 0.5) * arrowSize, pt.y + (uy * dir - nny * 0.5) * arrowSize);
-      ctx.stroke();
-    }
-
     ctx.fillStyle = '#374151';
     ctx.font = `${Math.max(10, 11 * zoom)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
     const dimLabel = `${Math.round(wlen)} cm`;
     const dimMetrics = ctx.measureText(dimLabel);
     const halfW = dimMetrics.width / 2;
-    // If label would be clipped, flip it to the other side of the wall
     let finalDimX = dimX;
     let finalDimY = dimY;
     if (dimX - halfW < 2 || dimX + halfW > width - 2 || dimY < 8 || dimY > height - 8) {
       finalDimX = mx - nnx * offsetDist;
       finalDimY = my - nny * offsetDist;
     }
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
     ctx.fillText(dimLabel, finalDimX, finalDimY);
   }
 
@@ -225,52 +191,60 @@
     const wx = wall.start.x + (wall.end.x - wall.start.x) * t;
     const wy = wall.start.y + (wall.end.y - wall.start.y) * t;
     const s = worldToScreen(wx, wy);
-    const r = Math.max(door.width * 0.5 * zoom * 0.15, 6);
 
-    const wallAngle = Math.atan2(wall.end.y - wall.start.y, wall.end.x - wall.start.x);
-    const swingDir = door.swingDirection === 'left' ? 1 : -1;
-    const startAngle = wallAngle + (swingDir === 1 ? -Math.PI / 2 : 0);
-    const endAngle = startAngle + Math.PI / 2;
-
-    // Clear wall area for door gap
     const dx = wall.end.x - wall.start.x;
     const dy = wall.end.y - wall.start.y;
     const len = Math.hypot(dx, dy);
-    const thickness = Math.max(wall.thickness * zoom * 0.15, 3);
-    const nx = (-dy / len) * thickness / 2;
-    const ny = (dx / len) * thickness / 2;
+    const ux = dx / len, uy = dy / len;
+    const nx = -uy, ny = ux;
+
+    const halfDoor = (door.width / 2) * zoom;
+    const thickness = wallThicknessScreen(wall);
+
+    // Clear wall area for door gap (background color)
     ctx.fillStyle = '#fafafa';
-    const hw = r;
-    const ux = (dx / len) * hw;
-    const uy = (dy / len) * hw;
+    const gux = ux * halfDoor;
+    const guy = uy * halfDoor;
+    const gnx = nx * (thickness / 2 + 1);
+    const gny = ny * (thickness / 2 + 1);
     ctx.beginPath();
-    ctx.moveTo(s.x - ux + nx, s.y - uy + ny);
-    ctx.lineTo(s.x + ux + nx, s.y + uy + ny);
-    ctx.lineTo(s.x + ux - nx, s.y + uy - ny);
-    ctx.lineTo(s.x - ux - nx, s.y - uy - ny);
+    ctx.moveTo(s.x - gux + gnx, s.y - guy + gny);
+    ctx.lineTo(s.x + gux + gnx, s.y + guy + gny);
+    ctx.lineTo(s.x + gux - gnx, s.y + guy - gny);
+    ctx.lineTo(s.x - gux - gnx, s.y - guy - gny);
     ctx.closePath();
     ctx.fill();
 
-    // Door arc (quarter circle)
+    // Door arc (quarter circle) — radius = door width
+    const r = door.width * zoom;
+    const wallAngle = Math.atan2(dy, dx);
+    const swingDir = door.swingDirection === 'left' ? 1 : -1;
+    // Hinge at one side of the gap, arc swings from wall direction to perpendicular
+    const hingeX = s.x - ux * halfDoor;
+    const hingeY = s.y - uy * halfDoor;
+    const startAngle = wallAngle;
+    const endAngle = wallAngle + swingDir * (Math.PI / 2);
+
     ctx.strokeStyle = '#f59e0b';
     ctx.lineWidth = 1.5;
     ctx.setLineDash([3, 3]);
     ctx.beginPath();
-    ctx.arc(s.x, s.y, r, startAngle, endAngle);
+    ctx.arc(hingeX, hingeY, r, Math.min(startAngle, endAngle), Math.max(startAngle, endAngle));
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // Door panel line
+    // Door panel line (from hinge to end of arc)
     ctx.lineWidth = 2;
+    ctx.strokeStyle = '#f59e0b';
     ctx.beginPath();
-    ctx.moveTo(s.x, s.y);
-    ctx.lineTo(s.x + r * Math.cos(endAngle), s.y + r * Math.sin(endAngle));
+    ctx.moveTo(hingeX, hingeY);
+    ctx.lineTo(hingeX + r * Math.cos(endAngle), hingeY + r * Math.sin(endAngle));
     ctx.stroke();
 
     // Hinge dot
     ctx.fillStyle = '#f59e0b';
     ctx.beginPath();
-    ctx.arc(s.x, s.y, 2.5, 0, Math.PI * 2);
+    ctx.arc(hingeX, hingeY, 3, 0, Math.PI * 2);
     ctx.fill();
   }
 
@@ -286,23 +260,36 @@
     const ux = dx / len, uy = dy / len;
     const nx = -uy, ny = ux;
 
-    const hw = Math.max(win.width * 0.5 * zoom * 0.15, 6);
-    const gap = Math.max(3, 4 * zoom * 0.15);
+    const hw = (win.width / 2) * zoom;
+    const thickness = wallThicknessScreen(wall);
 
-    // Two parallel lines with gap (architectural window symbol)
+    // Clear wall area for window gap
+    ctx.fillStyle = '#fafafa';
+    const gux = ux * hw;
+    const guy = uy * hw;
+    const gnx = nx * (thickness / 2 + 1);
+    const gny = ny * (thickness / 2 + 1);
+    ctx.beginPath();
+    ctx.moveTo(s.x - gux + gnx, s.y - guy + gny);
+    ctx.lineTo(s.x + gux + gnx, s.y + guy + gny);
+    ctx.lineTo(s.x + gux - gnx, s.y + guy - gny);
+    ctx.lineTo(s.x - gux - gnx, s.y - guy - gny);
+    ctx.closePath();
+    ctx.fill();
+
+    // Two parallel lines (glass panes) across the gap
+    const gap = Math.max(2, thickness * 0.2);
     ctx.strokeStyle = '#06b6d4';
     ctx.lineWidth = 2;
-    // Line 1
     ctx.beginPath();
     ctx.moveTo(s.x - ux * hw + nx * gap, s.y - uy * hw + ny * gap);
     ctx.lineTo(s.x + ux * hw + nx * gap, s.y + uy * hw + ny * gap);
     ctx.stroke();
-    // Line 2
     ctx.beginPath();
     ctx.moveTo(s.x - ux * hw - nx * gap, s.y - uy * hw - ny * gap);
     ctx.lineTo(s.x + ux * hw - nx * gap, s.y + uy * hw - ny * gap);
     ctx.stroke();
-    // Connecting lines at ends
+    // Connecting end caps
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(s.x - ux * hw + nx * gap, s.y - uy * hw + ny * gap);
@@ -316,8 +303,8 @@
     const cat = getCatalogItem(item.catalogId);
     if (!cat) return;
     const s = worldToScreen(item.position.x, item.position.y);
-    const w = cat.width * zoom * 0.15;
-    const d = cat.depth * zoom * 0.15;
+    const w = cat.width * zoom;
+    const d = cat.depth * zoom;
     const angle = (item.rotation * Math.PI) / 180;
 
     ctx.save();
@@ -333,7 +320,7 @@
 
     // Label
     ctx.fillStyle = '#374151';
-    const fontSize = Math.max(8, Math.min(12, w * 0.3));
+    const fontSize = Math.max(8, Math.min(14, Math.min(w, d) * 0.25));
     ctx.font = `${fontSize}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -363,8 +350,8 @@
     const cat = getCatalogItem(currentPlacingId);
     if (!cat) return;
     const s = worldToScreen(mousePos.x, mousePos.y);
-    const w = cat.width * zoom * 0.15;
-    const d = cat.depth * zoom * 0.15;
+    const w = cat.width * zoom;
+    const d = cat.depth * zoom;
     const angle = (currentPlacingRotation * Math.PI) / 180;
 
     ctx.save();
@@ -379,7 +366,7 @@
     ctx.strokeRect(-w / 2, -d / 2, w, d);
     ctx.setLineDash([]);
     ctx.fillStyle = '#374151';
-    ctx.font = `${Math.max(8, w * 0.3)}px sans-serif`;
+    ctx.font = `${Math.max(8, Math.min(w, d) * 0.25)}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(cat.icon, 0, 0);
@@ -451,9 +438,9 @@
       const anySelected = entries.some(e => e.selected);
       const maxThickness = Math.max(...entries.map(e => e.thickness));
       const s = worldToScreen(entries[0].x, entries[0].y);
-      const r = Math.max(maxThickness * zoom * 0.15, 3) / 2 + 0.5;
-      ctx.fillStyle = anySelected ? '#93c5fd' : '#4b5563';
-      ctx.strokeStyle = anySelected ? '#3b82f6' : '#1f2937';
+      const r = Math.max(maxThickness * zoom, 4) / 2 + 0.5;
+      ctx.fillStyle = anySelected ? '#93c5fd' : '#404040';
+      ctx.strokeStyle = anySelected ? '#3b82f6' : '#333333';
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.arc(s.x, s.y, r, 0, Math.PI * 2);
@@ -645,7 +632,7 @@
       const dx = e.x - s.x, dy = e.y - s.y;
       const len = Math.hypot(dx, dy);
       if (len > 1) {
-        const thickness = Math.max(15 * zoom * 0.15, 3);
+        const thickness = Math.max(20 * zoom, 4);
         const nx = (-dy / len) * thickness / 2;
         const ny = (dx / len) * thickness / 2;
         ctx.fillStyle = '#3b82f620';

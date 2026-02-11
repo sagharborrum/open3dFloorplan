@@ -99,7 +99,7 @@ export function addDoor(wallId: string, position: number): string {
 export function addWindow(wallId: string, position: number): string {
   const id = uid();
   mutate((f) => {
-    f.windows.push({ id, wallId, position, width: 100, height: 120, sillHeight: 90 });
+    f.windows.push({ id, wallId, position, width: 120, height: 120, sillHeight: 90 });
   });
   return id;
 }
