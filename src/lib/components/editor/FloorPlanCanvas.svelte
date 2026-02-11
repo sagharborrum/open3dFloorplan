@@ -68,16 +68,16 @@
     return { x: (wx - camX) * zoom + width / 2, y: (wy - camY) * zoom + height / 2 };
   }
 
-  function magneticSnap(p: Point): Point {
+  function magneticSnap(p: Point): Point & { snappedToEndpoint?: boolean } {
     if (!currentFloor) return { x: snap(p.x), y: snap(p.y) };
-    let best = { x: snap(p.x), y: snap(p.y) };
+    let best: Point & { snappedToEndpoint?: boolean } = { x: snap(p.x), y: snap(p.y) };
     let bestDist = MAGNETIC_SNAP / zoom;
     for (const w of currentFloor.walls) {
       for (const ep of [w.start, w.end]) {
         const d = Math.hypot(p.x - ep.x, p.y - ep.y);
         if (d < bestDist) {
           bestDist = d;
-          best = { x: ep.x, y: ep.y };
+          best = { x: ep.x, y: ep.y, snappedToEndpoint: true };
         }
       }
     }
@@ -558,6 +558,17 @@
       ctx.fillText(`${Math.round(plen)} cm`, (s.x + e.x) / 2, (s.y + e.y) / 2 - 14);
       const angle = Math.atan2(endPt.y - wallStart.y, endPt.x - wallStart.x) * 180 / Math.PI;
       ctx.fillText(`${Math.round(angle)}°`, (s.x + e.x) / 2, (s.y + e.y) / 2 + 16);
+
+      // Snap indicator — green ring when snapping to existing endpoint
+      if ((endPt as any).snappedToEndpoint) {
+        ctx.strokeStyle = '#22c55e';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, 8, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = '#22c55e40';
+        ctx.fill();
+      }
     }
 
     // Measurement
