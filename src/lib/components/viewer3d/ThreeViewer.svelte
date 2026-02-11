@@ -78,12 +78,14 @@
     controls.target.set(0, 100, 0);
     controls.maxPolarAngle = Math.PI / 2.05;
 
-    // Lights
-    const ambient = new THREE.AmbientLight(0xffffff, 0.5);
+    // Lights — improved multi-source setup
+    const ambient = new THREE.AmbientLight(0xffffff, 0.35);
     scene.add(ambient);
-    const hemi = new THREE.HemisphereLight(0x87ceeb, 0x8b7355, 0.3);
+    const hemi = new THREE.HemisphereLight(0x87ceeb, 0x8b7355, 0.4);
     scene.add(hemi);
-    const dir = new THREE.DirectionalLight(0xffffff, 0.9);
+
+    // Key light (sun)
+    const dir = new THREE.DirectionalLight(0xfff8e7, 1.0);
     dir.position.set(500, 1200, 800);
     dir.castShadow = true;
     dir.shadow.mapSize.width = 2048;
@@ -92,7 +94,18 @@
     dir.shadow.camera.right = 1500;
     dir.shadow.camera.top = 1500;
     dir.shadow.camera.bottom = -1500;
+    dir.shadow.bias = -0.0005;
     scene.add(dir);
+
+    // Fill light — softer, opposite side to reduce harsh shadows
+    const fill = new THREE.DirectionalLight(0xc8d8f0, 0.4);
+    fill.position.set(-600, 800, -400);
+    scene.add(fill);
+
+    // Rim/back light for depth
+    const rim = new THREE.DirectionalLight(0xffe4c4, 0.25);
+    rim.position.set(-200, 600, 1000);
+    scene.add(rim);
 
     // Textured floor
     const floorTex = createFloorTexture();
@@ -448,6 +461,20 @@
       sprite.position.set(centroid.x, 30, centroid.y);
       sprite.scale.set(150, 40, 1);
       wallGroup.add(sprite);
+
+      // Ceiling — render at wall height, visible from below
+      const defaultWallH = floor.walls.length > 0 ? floor.walls[0].height : 260;
+      const ceilMat = new THREE.MeshStandardMaterial({
+        color: 0xf5f5f0,
+        roughness: 0.95,
+        side: THREE.BackSide // visible from below
+      });
+      const ceilGeo = new THREE.ShapeGeometry(shape);
+      const ceilMesh = new THREE.Mesh(ceilGeo, ceilMat);
+      ceilMesh.rotation.x = -Math.PI / 2;
+      ceilMesh.position.y = defaultWallH;
+      ceilMesh.receiveShadow = true;
+      wallGroup.add(ceilMesh);
     }
 
     autoCenterCamera(floor);
