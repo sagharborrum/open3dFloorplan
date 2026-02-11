@@ -127,11 +127,21 @@
   function buildWalls(floor: Floor) {
     while (wallGroup.children.length) wallGroup.remove(wallGroup.children[0]);
 
-    const interiorMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 });
-    const exteriorMat = new THREE.MeshStandardMaterial({ color: 0xd4cfc9, roughness: 0.85 });
+    const defaultInteriorMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 });
+    const defaultExteriorMat = new THREE.MeshStandardMaterial({ color: 0xd4cfc9, roughness: 0.85 });
     const baseboardMat = new THREE.MeshStandardMaterial({ color: 0xe8e0d4, roughness: 0.7 });
 
     for (const wall of floor.walls) {
+      // Use wall color if set (non-default), otherwise use defaults
+      const wallColor = wall.color && wall.color !== '#cccccc' && wall.color !== '#888888'
+        ? new THREE.Color(wall.color)
+        : null;
+      const interiorMat = wallColor
+        ? new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.9 })
+        : defaultInteriorMat;
+      const exteriorMat = wallColor
+        ? new THREE.MeshStandardMaterial({ color: wallColor.clone().offsetHSL(0, -0.05, -0.1), roughness: 0.85 })
+        : defaultExteriorMat;
       const dx = wall.end.x - wall.start.x;
       const dy = wall.end.y - wall.start.y;
       const len = Math.hypot(dx, dy);
@@ -170,13 +180,53 @@
         wallGroup.add(mesh);
       }
 
-      // Baseboard
-      const bbGeo = new THREE.BoxGeometry(len, BASEBOARD_HEIGHT, t + 2);
-      const bbMesh = new THREE.Mesh(bbGeo, baseboardMat);
-      bbMesh.position.set(cx, BASEBOARD_HEIGHT / 2, cy);
-      bbMesh.rotation.y = -angle;
-      bbMesh.castShadow = true;
-      wallGroup.add(bbMesh);
+      // Baseboard — with gaps at door openings
+      const doorOpeningsForBB = floor.doors.filter((d) => d.wallId === wall.id);
+      if (doorOpeningsForBB.length === 0) {
+        const bbGeo = new THREE.BoxGeometry(len, BASEBOARD_HEIGHT, t + 2);
+        const bbMesh = new THREE.Mesh(bbGeo, baseboardMat);
+        bbMesh.position.set(cx, BASEBOARD_HEIGHT / 2, cy);
+        bbMesh.rotation.y = -angle;
+        bbMesh.castShadow = true;
+        wallGroup.add(bbMesh);
+      } else {
+        // Build baseboard segments skipping door gaps
+        const sortedDoors = [...doorOpeningsForBB].sort((a, b) => a.position - b.position);
+        let bbCursor = 0;
+        for (const door of sortedDoors) {
+          const dLeft = door.position * len - door.width / 2;
+          const dRight = door.position * len + door.width / 2;
+          if (dLeft > bbCursor) {
+            const segLen = dLeft - bbCursor;
+            const segCenter = bbCursor + segLen / 2 - len / 2;
+            const bbGeo = new THREE.BoxGeometry(segLen, BASEBOARD_HEIGHT, t + 2);
+            const bbMesh = new THREE.Mesh(bbGeo, baseboardMat);
+            bbMesh.position.set(
+              cx + segCenter * Math.cos(angle),
+              BASEBOARD_HEIGHT / 2,
+              cy + segCenter * Math.sin(angle)
+            );
+            bbMesh.rotation.y = -angle;
+            bbMesh.castShadow = true;
+            wallGroup.add(bbMesh);
+          }
+          bbCursor = Math.max(bbCursor, dRight);
+        }
+        if (bbCursor < len) {
+          const segLen = len - bbCursor;
+          const segCenter = bbCursor + segLen / 2 - len / 2;
+          const bbGeo = new THREE.BoxGeometry(segLen, BASEBOARD_HEIGHT, t + 2);
+          const bbMesh = new THREE.Mesh(bbGeo, baseboardMat);
+          bbMesh.position.set(
+            cx + segCenter * Math.cos(angle),
+            BASEBOARD_HEIGHT / 2,
+            cy + segCenter * Math.sin(angle)
+          );
+          bbMesh.rotation.y = -angle;
+          bbMesh.castShadow = true;
+          wallGroup.add(bbMesh);
+        }
+      }
     }
 
     // Doors
@@ -187,23 +237,79 @@
       const px = wall.start.x + (wall.end.x - wall.start.x) * t;
       const py = wall.start.y + (wall.end.y - wall.start.y) * t;
       const angle = Math.atan2(wall.end.y - wall.start.y, wall.end.x - wall.start.x);
+      const wt = Math.max(wall.thickness, WALL_THICKNESS);
 
-      // Door frame
       const frameMat = new THREE.MeshStandardMaterial({ color: 0x6b4423, roughness: 0.6 });
-      const frameGeo = new THREE.BoxGeometry(door.width + 10, 210, 5);
-      const frameMesh = new THREE.Mesh(frameGeo, frameMat);
-      frameMesh.position.set(px, 105, py);
-      frameMesh.rotation.y = -angle;
-      frameMesh.castShadow = true;
-      wallGroup.add(frameMesh);
+      const doorHeight = 210;
+      const jamb = 5; // jamb thickness
 
-      // Door panel
+      // Left jamb
+      const ljGeo = new THREE.BoxGeometry(jamb, doorHeight, wt + 2);
+      const ljMesh = new THREE.Mesh(ljGeo, frameMat);
+      const ljOffset = -door.width / 2 - jamb / 2;
+      ljMesh.position.set(
+        px + ljOffset * Math.cos(angle),
+        doorHeight / 2,
+        py + ljOffset * Math.sin(angle)
+      );
+      ljMesh.rotation.y = -angle;
+      ljMesh.castShadow = true;
+      wallGroup.add(ljMesh);
+
+      // Right jamb
+      const rjMesh = new THREE.Mesh(ljGeo, frameMat);
+      const rjOffset = door.width / 2 + jamb / 2;
+      rjMesh.position.set(
+        px + rjOffset * Math.cos(angle),
+        doorHeight / 2,
+        py + rjOffset * Math.sin(angle)
+      );
+      rjMesh.rotation.y = -angle;
+      rjMesh.castShadow = true;
+      wallGroup.add(rjMesh);
+
+      // Header
+      const hGeo = new THREE.BoxGeometry(door.width + jamb * 2, jamb, wt + 2);
+      const hMesh = new THREE.Mesh(hGeo, frameMat);
+      hMesh.position.set(px, doorHeight + jamb / 2, py);
+      hMesh.rotation.y = -angle;
+      hMesh.castShadow = true;
+      wallGroup.add(hMesh);
+
+      // Door panel — hinged on left side, slightly ajar (15°)
       const panelMat = new THREE.MeshStandardMaterial({ color: 0x8B6914, roughness: 0.5 });
-      const panelGeo = new THREE.BoxGeometry(door.width - 4, 205, 3);
+      const panelGeo = new THREE.BoxGeometry(door.width - 2, doorHeight - 4, 4);
+      // Shift geometry so pivot is at left edge
+      panelGeo.translate(door.width / 2 - 1, 0, 0);
       const panelMesh = new THREE.Mesh(panelGeo, panelMat);
-      panelMesh.position.set(px, 103, py);
-      panelMesh.rotation.y = -angle;
+      // Position at left jamb inner edge
+      const hingeOffset = -door.width / 2;
+      const swingAngle = 0.26; // ~15 degrees ajar
+      const normalX = -Math.sin(angle);
+      const normalZ = Math.cos(angle);
+      panelMesh.position.set(
+        px + hingeOffset * Math.cos(angle) + normalX * 2,
+        doorHeight / 2 - 2,
+        py + hingeOffset * Math.sin(angle) + normalZ * 2
+      );
+      panelMesh.rotation.y = -angle + swingAngle;
+      panelMesh.castShadow = true;
       wallGroup.add(panelMesh);
+
+      // Door handle (small sphere)
+      const handleMat = new THREE.MeshStandardMaterial({ color: 0xc0c0c0, metalness: 0.8, roughness: 0.2 });
+      const handleGeo = new THREE.SphereGeometry(3, 8, 8);
+      const handleMesh = new THREE.Mesh(handleGeo, handleMat);
+      // Place on the door panel's right side at handle height
+      const handleLocalX = door.width - 12;
+      const handleCos = Math.cos(-angle + swingAngle);
+      const handleSin = Math.sin(-angle + swingAngle);
+      handleMesh.position.set(
+        panelMesh.position.x + handleLocalX * handleCos,
+        100,
+        panelMesh.position.z - handleLocalX * handleSin
+      );
+      wallGroup.add(handleMesh);
     }
 
     // Windows
@@ -214,28 +320,63 @@
       const px = wall.start.x + (wall.end.x - wall.start.x) * t;
       const py = wall.start.y + (wall.end.y - wall.start.y) * t;
       const angle = Math.atan2(wall.end.y - wall.start.y, wall.end.x - wall.start.x);
+      const wt = Math.max(wall.thickness, WALL_THICKNESS);
+      const winCY = win.sillHeight + win.height / 2;
 
-      // Glass
-      const glassMat = new THREE.MeshStandardMaterial({ color: 0x87CEEB, transparent: true, opacity: 0.35, roughness: 0.1, metalness: 0.1 });
-      const glassGeo = new THREE.BoxGeometry(win.width, win.height, 3);
-      const glassMesh = new THREE.Mesh(glassGeo, glassMat);
-      glassMesh.position.set(px, win.sillHeight + win.height / 2, py);
-      glassMesh.rotation.y = -angle;
-      wallGroup.add(glassMesh);
+      const frameMat = new THREE.MeshStandardMaterial({ color: 0xe0e0e0, roughness: 0.4, metalness: 0.1 });
+      const mullionW = 4; // mullion bar width
 
-      // Frame
-      const frameMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.5 });
-      const frameGeo = new THREE.BoxGeometry(win.width + 8, win.height + 8, 5);
-      const frameMesh = new THREE.Mesh(frameGeo, frameMat);
-      frameMesh.position.set(px, win.sillHeight + win.height / 2, py);
-      frameMesh.rotation.y = -angle;
-      wallGroup.add(frameMesh);
+      // Outer frame — 4 bars forming rectangle
+      const bars: { w: number; h: number; ox: number; oy: number }[] = [
+        { w: win.width + mullionW * 2, h: mullionW, ox: 0, oy: -win.height / 2 - mullionW / 2 }, // bottom
+        { w: win.width + mullionW * 2, h: mullionW, ox: 0, oy: win.height / 2 + mullionW / 2 },  // top
+        { w: mullionW, h: win.height, ox: -win.width / 2 - mullionW / 2, oy: 0 },  // left
+        { w: mullionW, h: win.height, ox: win.width / 2 + mullionW / 2, oy: 0 },   // right
+        // Center vertical mullion
+        { w: mullionW, h: win.height, ox: 0, oy: 0 },
+        // Center horizontal mullion
+        { w: win.width, h: mullionW, ox: 0, oy: 0 },
+      ];
+      for (const bar of bars) {
+        const geo = new THREE.BoxGeometry(bar.w, bar.h, mullionW);
+        const mesh = new THREE.Mesh(geo, frameMat);
+        mesh.position.set(
+          px + bar.ox * Math.cos(angle),
+          winCY + bar.oy,
+          py + bar.ox * Math.sin(angle)
+        );
+        mesh.rotation.y = -angle;
+        wallGroup.add(mesh);
+      }
 
-      // Sill
-      const sillGeo = new THREE.BoxGeometry(win.width + 16, 4, 12);
+      // Glass panes (4 quadrants)
+      const glassMat = new THREE.MeshStandardMaterial({
+        color: 0xa8d8ea, transparent: true, opacity: 0.3,
+        roughness: 0.05, metalness: 0.1, side: THREE.DoubleSide
+      });
+      const halfW = (win.width - mullionW) / 2;
+      const halfH = (win.height - mullionW) / 2;
+      for (const qx of [-1, 1]) {
+        for (const qy of [-1, 1]) {
+          const gGeo = new THREE.BoxGeometry(halfW, halfH, 1);
+          const gMesh = new THREE.Mesh(gGeo, glassMat);
+          const ox = qx * (halfW / 2 + mullionW / 2);
+          gMesh.position.set(
+            px + ox * Math.cos(angle),
+            winCY + qy * (halfH / 2 + mullionW / 2),
+            py + ox * Math.sin(angle)
+          );
+          gMesh.rotation.y = -angle;
+          wallGroup.add(gMesh);
+        }
+      }
+
+      // Sill — protruding ledge
+      const sillGeo = new THREE.BoxGeometry(win.width + 16, 4, wt + 10);
       const sillMesh = new THREE.Mesh(sillGeo, frameMat);
       sillMesh.position.set(px, win.sillHeight - 2, py);
       sillMesh.rotation.y = -angle;
+      sillMesh.castShadow = true;
       wallGroup.add(sillMesh);
     }
 
