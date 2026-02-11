@@ -1,0 +1,63 @@
+export interface Point { x: number; y: number; }
+
+export interface Wall {
+  id: string;
+  start: Point;
+  end: Point;
+  thickness: number;
+  height: number;
+  color: string;
+}
+
+export interface Room {
+  id: string;
+  name: string;
+  walls: string[];
+  floorTexture: string;
+  area: number;
+}
+
+export interface Door {
+  id: string;
+  wallId: string;
+  position: number; // 0-1 along wall
+  width: number;
+  type: 'single' | 'double';
+  swingDirection: 'left' | 'right';
+}
+
+export interface Window {
+  id: string;
+  wallId: string;
+  position: number; // 0-1 along wall
+  width: number;
+  height: number;
+  sillHeight: number;
+}
+
+export interface FurnitureItem {
+  id: string;
+  catalogId: string;
+  position: Point;
+  rotation: number;
+  scale: { x: number; y: number; z: number };
+}
+
+export interface Floor {
+  id: string;
+  name: string;
+  walls: Wall[];
+  rooms: Room[];
+  doors: Door[];
+  windows: Window[];
+  furniture: FurnitureItem[];
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  floors: Floor[];
+  activeFloorId: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
