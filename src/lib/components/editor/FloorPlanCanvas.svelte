@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { activeFloor, selectedTool, selectedElementId, selectedRoomId, addWall, addDoor, addWindow, addFurniture, moveFurniture, rotateFurniture, removeElement, placingFurnitureId, placingRotation, detectedRoomsStore } from '$lib/stores/project';
+  import { activeFloor, selectedTool, selectedElementId, selectedRoomId, addWall, addDoor, addWindow, addFurniture, moveFurniture, commitFurnitureMove, rotateFurniture, removeElement, placingFurnitureId, placingRotation, detectedRoomsStore } from '$lib/stores/project';
   import type { Point, Wall, Door, Window as Win, FurnitureItem } from '$lib/models/types';
   import type { Floor, Room } from '$lib/models/types';
   import { detectRooms, getRoomPolygon, roomCentroid } from '$lib/utils/roomDetection';
@@ -838,6 +838,7 @@
         selectedElementId.set(fi.id);
         selectedRoomId.set(null);
         draggingFurnitureId = fi.id;
+        commitFurnitureMove(); // snapshot before drag for undo
         dragOffset = { x: wp.x - fi.position.x, y: wp.y - fi.position.y };
         return;
       }

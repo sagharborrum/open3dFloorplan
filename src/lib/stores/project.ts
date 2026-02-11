@@ -112,11 +112,24 @@ export function addFurniture(catalogId: string, position: Point): string {
   return id;
 }
 
+/** Move furniture without creating an undo snapshot on every call (used during drag).
+ *  Call `commitFurnitureMove()` when the drag ends to snapshot. */
 export function moveFurniture(id: string, position: Point) {
-  mutate((f) => {
-    const item = f.furniture.find((fi) => fi.id === id);
-    if (item) item.position = position;
-  });
+  const p = get(currentProject);
+  if (!p) return;
+  const floor = p.floors.find((f) => f.id === p.activeFloorId);
+  if (!floor) return;
+  const item = floor.furniture.find((fi) => fi.id === id);
+  if (item) {
+    item.position = position;
+    p.updatedAt = new Date();
+    currentProject.set({ ...p });
+  }
+}
+
+/** Snapshot the current state after a furniture drag ends */
+export function commitFurnitureMove() {
+  snapshot();
 }
 
 export function rotateFurniture(id: string, angle: number) {
