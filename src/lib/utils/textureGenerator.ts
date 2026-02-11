@@ -499,15 +499,27 @@ const FLOOR_TEXTURES: Record<string, string> = {
   'vinyl': '/textures/floor-vinyl.jpg',
 };
 
+// Legacy material ID mapping (matches materials.ts getMaterial())
+const LEGACY_FLOOR_MAP: Record<string, string> = {
+  'hardwood': 'light-oak',
+  'tile': 'ceramic-white',
+  'carpet': 'carpet-beige',
+  'marble': 'marble-white',
+  'light-wood': 'light-oak',
+  'dark-wood': 'walnut',
+};
+
 export function getFloorTextureCanvas(materialId: string): HTMLCanvasElement | null {
-  const cacheKey = `photo-floor-${materialId}`;
+  // Resolve legacy IDs to actual texture keys
+  const resolvedId = LEGACY_FLOOR_MAP[materialId] || materialId;
+  const cacheKey = `photo-floor-${resolvedId}`;
   if (cache.has(cacheKey)) return cache.get(cacheKey)!;
 
-  const url = FLOOR_TEXTURES[materialId];
+  const url = FLOOR_TEXTURES[resolvedId];
   if (!url) return null;
 
-  if (imageCache.has(`floor-${materialId}`)) {
-    const img = imageCache.get(`floor-${materialId}`)!;
+  if (imageCache.has(`floor-${resolvedId}`)) {
+    const img = imageCache.get(`floor-${resolvedId}`)!;
     const c = document.createElement('canvas');
     c.width = img.naturalWidth; c.height = img.naturalHeight;
     const cx = c.getContext('2d')!;
@@ -516,7 +528,7 @@ export function getFloorTextureCanvas(materialId: string): HTMLCanvasElement | n
     return c;
   }
 
-  const loadKey = `floor-${materialId}`;
+  const loadKey = `floor-${resolvedId}`;
   if (!loadingSet.has(loadKey)) {
     loadingSet.add(loadKey);
     const img = new Image();

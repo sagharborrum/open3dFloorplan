@@ -243,7 +243,9 @@
 
     for (const wall of floor.walls) {
       // Use wall color if set (non-default), otherwise use defaults
-      const wallColor = wall.color && wall.color !== '#cccccc' && wall.color !== '#888888'
+      // Default 2D wall colors should use 3D defaults (white interior, light exterior)
+      const DEFAULT_2D_COLORS = ['#cccccc', '#888888', '#444444', '#404040'];
+      const wallColor = wall.color && !DEFAULT_2D_COLORS.includes(wall.color.toLowerCase())
         ? new THREE.Color(wall.color)
         : null;
       let interiorMat: THREE.MeshStandardMaterial;
