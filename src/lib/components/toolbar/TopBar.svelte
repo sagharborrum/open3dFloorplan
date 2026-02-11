@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { currentProject, viewMode, undo, redo, addFloor, removeFloor, setActiveFloor, updateProjectName, loadProject, createDefaultProject } from '$lib/stores/project';
+  import { currentProject, viewMode, undo, redo, addFloor, removeFloor, setActiveFloor, updateProjectName, loadProject, createDefaultProject, snapEnabled } from '$lib/stores/project';
   import { localStore } from '$lib/services/datastore';
   import { get } from 'svelte/store';
   import type { Floor, Project } from '$lib/models/types';
@@ -13,6 +13,7 @@
   let activeFloorId = $state('');
   let editingName = $state(false);
   let exportOpen = $state(false);
+  let snapOn = $state(true);
   let exportRef: HTMLDivElement;
 
   currentProject.subscribe((p) => {
@@ -195,6 +196,19 @@
   </button>
   <button onclick={redo} class="p-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded transition-colors" title="Redo (Ctrl+Y)">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10"/></svg>
+  </button>
+
+  <div class="h-5 w-px bg-white/20"></div>
+
+  <!-- Snap to grid toggle -->
+  <button
+    onclick={() => { snapEnabled.update(v => !v); snapOn = !snapOn; }}
+    class="p-1.5 rounded transition-colors {snapOn ? 'text-white bg-white/20' : 'text-white/40 hover:text-white/70 hover:bg-white/10'}"
+    title="Snap to Grid ({snapOn ? 'On' : 'Off'})"
+  >
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+    </svg>
   </button>
 
   <div class="h-5 w-px bg-white/20"></div>

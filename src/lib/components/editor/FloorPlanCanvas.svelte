@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { activeFloor, selectedTool, selectedElementId, selectedRoomId, addWall, addDoor, addWindow, updateWall, moveWallEndpoint, updateDoor, updateWindow, addFurniture, moveFurniture, commitFurnitureMove, rotateFurniture, setFurnitureRotation, scaleFurniture, removeElement, placingFurnitureId, placingRotation, placingDoorType, placingWindowType, detectedRoomsStore, duplicateDoor, duplicateWindow, duplicateFurniture, duplicateWall, moveWallParallel, splitWall } from '$lib/stores/project';
+  import { activeFloor, selectedTool, selectedElementId, selectedRoomId, addWall, addDoor, addWindow, updateWall, moveWallEndpoint, updateDoor, updateWindow, addFurniture, moveFurniture, commitFurnitureMove, rotateFurniture, setFurnitureRotation, scaleFurniture, removeElement, placingFurnitureId, placingRotation, placingDoorType, placingWindowType, detectedRoomsStore, duplicateDoor, duplicateWindow, duplicateFurniture, duplicateWall, moveWallParallel, splitWall, snapEnabled } from '$lib/stores/project';
   import type { Point, Wall, Door, Window as Win, FurnitureItem } from '$lib/models/types';
   import type { Floor, Room } from '$lib/models/types';
   import { detectRooms, getRoomPolygon, roomCentroid } from '$lib/utils/roomDetection';
@@ -66,6 +66,7 @@
   let currentTool: string = $state('select');
   let currentDoorType: Door['type'] = $state('single');
   let currentWindowType: Win['type'] = $state('standard');
+  let currentSnapEnabled: boolean = $state(true);
 
   // Wall endpoint drag state (includes all connected walls at the corner)
   let draggingWallEndpoint: { wallId: string; endpoint: 'start' | 'end' } | null = $state(null);
@@ -158,6 +159,7 @@
   }
 
   function snap(v: number): number {
+    if (!currentSnapEnabled) return v;
     return Math.round(v / SNAP) * SNAP;
   }
 
@@ -204,6 +206,7 @@
   }
 
   function angleSnap(start: Point, end: Point): Point {
+    if (!currentSnapEnabled) return end;
     const dx = end.x - start.x;
     const dy = end.y - start.y;
     const len = Math.hypot(dx, dy);
@@ -1780,8 +1783,9 @@
     const unsub7 = detectedRoomsStore.subscribe((rooms) => { if (rooms.length > 0) detectedRooms = rooms; });
     const unsub8 = placingDoorType.subscribe((t) => { currentDoorType = t; });
     const unsub9 = placingWindowType.subscribe((t) => { currentWindowType = t; });
+    const unsub10 = snapEnabled.subscribe((v) => { currentSnapEnabled = v; });
 
-    return () => { resizeObs.disconnect(); unsub1(); unsub2(); unsub3(); unsub4(); unsub5(); unsub6(); unsub7(); unsub8(); unsub9(); };
+    return () => { resizeObs.disconnect(); unsub1(); unsub2(); unsub3(); unsub4(); unsub5(); unsub6(); unsub7(); unsub8(); unsub9(); unsub10(); };
   });
 
   function zoomToFit() {

@@ -31,6 +31,7 @@ export const activeFloor = derived(currentProject, ($p) => {
 
 export type Tool = 'select' | 'wall' | 'door' | 'window' | 'furniture';
 export const selectedTool = writable<Tool>('select');
+export const snapEnabled = writable<boolean>(true);
 export const selectedElementId = writable<string | null>(null);
 export const viewMode = writable<'2d' | '3d'>('2d');
 
