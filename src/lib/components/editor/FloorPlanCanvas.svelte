@@ -2673,6 +2673,18 @@
   function onKeyDown(e: KeyboardEvent) {
     if (e.code === 'Space') { spaceDown = true; e.preventDefault(); return; }
 
+    // Canvas-specific Escape handling (before global shortcut eats it)
+    if (e.code === 'Escape') {
+      wallStart = null; wallSequenceFirst = null;
+      placingFurnitureId.set(null);
+      placingRotation.set(0);
+      measuring = false;
+      measureStart = null;
+      measureEnd = null;
+      marqueeStart = null;
+      marqueeEnd = null;
+    }
+
     // Global shortcuts
     const handled = handleGlobalShortcut(e, {
       rotateFurniture: () => {
@@ -2703,14 +2715,6 @@
         wallStart = null;
         wallSequenceFirst = null;
       }
-    }
-    if (e.code === 'Escape') {
-      wallStart = null; wallSequenceFirst = null;
-      placingFurnitureId.set(null);
-      placingRotation.set(0);
-      measuring = false;
-      measureStart = null;
-      measureEnd = null;
     }
   }
 
