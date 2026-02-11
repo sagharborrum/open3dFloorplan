@@ -20,6 +20,7 @@
 
   // Wall drawing state
   let wallStart: Point | null = $state(null);
+  let wallSequenceFirst: Point | null = $state(null);
   let mousePos: Point = $state({ x: 0, y: 0 });
 
   // Pan state
@@ -528,7 +529,21 @@
     // Furniture placement preview
     if (currentPlacingId && currentTool === 'furniture') drawFurniturePreview();
 
-    // Wall in progress
+    // Wall in progress — draw close indicator at first point
+    if (wallSequenceFirst && wallStart && currentTool === 'wall' && (wallStart.x !== wallSequenceFirst.x || wallStart.y !== wallSequenceFirst.y)) {
+      const fp = worldToScreen(wallSequenceFirst.x, wallSequenceFirst.y);
+      const distToFirst = Math.hypot(mousePos.x - wallSequenceFirst.x, mousePos.y - wallSequenceFirst.y);
+      const isNear = distToFirst < 20;
+      ctx.beginPath();
+      ctx.arc(fp.x, fp.y, isNear ? 8 : 5, 0, Math.PI * 2);
+      ctx.strokeStyle = isNear ? '#22c55e' : '#64748b';
+      ctx.lineWidth = isNear ? 2.5 : 1.5;
+      ctx.stroke();
+      if (isNear) {
+        ctx.fillStyle = 'rgba(34, 197, 94, 0.2)';
+        ctx.fill();
+      }
+    }
     if (wallStart && currentTool === 'wall') {
       drawAngleGuides(wallStart);
       let endPt = magneticSnap(mousePos);
@@ -682,8 +697,14 @@
       if (wallStart) endPt = angleSnap(wallStart, endPt);
       if (!wallStart) {
         wallStart = endPt;
+        wallSequenceFirst = endPt;
       } else {
-        if (Math.hypot(endPt.x - wallStart.x, endPt.y - wallStart.y) > 5) {
+        // Auto-close: if clicking near the first point of the sequence, close the loop
+        if (wallSequenceFirst && Math.hypot(endPt.x - wallSequenceFirst.x, endPt.y - wallSequenceFirst.y) < 20 && Math.hypot(wallStart.x - wallSequenceFirst.x, wallStart.y - wallSequenceFirst.y) > 20) {
+          addWall(wallStart, wallSequenceFirst);
+          wallStart = null;
+          wallSequenceFirst = null;
+        } else if (Math.hypot(endPt.x - wallStart.x, endPt.y - wallStart.y) > 5) {
           addWall(wallStart, endPt);
           wallStart = endPt;
         }
@@ -728,7 +749,7 @@
   }
 
   function onDblClick(e: MouseEvent) {
-    if (currentTool === 'wall' && wallStart) wallStart = null;
+    if (currentTool === 'wall' && wallStart) { wallStart = null; wallSequenceFirst = null; }
   }
 
   function onMouseMove(e: MouseEvent) {
@@ -793,7 +814,7 @@
       if (!measuring) { measureStart = null; measureEnd = null; }
     }
     if (e.code === 'Escape') {
-      wallStart = null;
+      wallStart = null; wallSequenceFirst = null;
       placingFurnitureId.set(null);
       placingRotation.set(0);
       measuring = false;
