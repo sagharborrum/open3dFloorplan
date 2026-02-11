@@ -153,6 +153,18 @@
 </script>
 
 <div class="h-12 bg-gradient-to-r from-slate-800 to-slate-700 flex items-center px-4 gap-3 shrink-0 shadow-sm">
+  <!-- Back to Projects -->
+  <a
+    href="/"
+    class="flex items-center gap-1 text-white/70 hover:text-white text-sm transition-colors"
+    title="Back to Projects"
+  >
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    <span class="hidden sm:inline">Projects</span>
+  </a>
+
+  <div class="h-5 w-px bg-white/20"></div>
+
   {#if editingName}
     <input
       type="text"

@@ -17,8 +17,11 @@
     goto(`/editor?id=${p.id}`);
   }
 
+  let confirmDeleteId = $state<string | null>(null);
+
   async function deleteProject(id: string) {
     await localStore.delete(id);
+    confirmDeleteId = null;
     projects = await localStore.list();
   }
 </script>
@@ -46,10 +49,24 @@
               <h3 class="font-medium text-gray-800">{project.name}</h3>
               <p class="text-xs text-gray-400 mt-1">Last edited: {new Date(project.updatedAt).toLocaleDateString()}</p>
             </a>
-            <button
-              onclick={() => deleteProject(project.id)}
-              class="text-red-400 hover:text-red-600 text-sm ml-4"
-            >Delete</button>
+            {#if confirmDeleteId === project.id}
+              <div class="flex items-center gap-2 ml-4">
+                <span class="text-xs text-gray-500">Delete?</span>
+                <button
+                  onclick={() => deleteProject(project.id)}
+                  class="px-2 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600"
+                >Yes</button>
+                <button
+                  onclick={() => confirmDeleteId = null}
+                  class="px-2 py-1 bg-gray-200 text-gray-600 text-xs rounded hover:bg-gray-300"
+                >No</button>
+              </div>
+            {:else}
+              <button
+                onclick={() => confirmDeleteId = project.id}
+                class="text-red-400 hover:text-red-600 text-sm ml-4"
+              >Delete</button>
+            {/if}
           </div>
         {/each}
       </div>
