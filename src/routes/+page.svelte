@@ -18,6 +18,13 @@
   }
 
   let confirmDeleteId = $state<string | null>(null);
+  let confirmDeleteAll = $state(false);
+
+  async function deleteAllProjects() {
+    for (const p of projects) await localStore.delete(p.id);
+    confirmDeleteAll = false;
+    projects = await localStore.list();
+  }
 
   async function deleteProject(id: string) {
     await localStore.delete(id);
@@ -35,6 +42,20 @@
         class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
       >+ New Project</button>
     </div>
+
+    {#if projects.length > 1}
+      <div class="flex justify-end mb-4">
+        {#if confirmDeleteAll}
+          <div class="flex items-center gap-2">
+            <span class="text-sm text-gray-500">Delete all {projects.length} projects?</span>
+            <button onclick={deleteAllProjects} class="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600">Yes, delete all</button>
+            <button onclick={() => confirmDeleteAll = false} class="px-3 py-1 bg-gray-200 text-gray-600 text-sm rounded hover:bg-gray-300">Cancel</button>
+          </div>
+        {:else}
+          <button onclick={() => confirmDeleteAll = true} class="text-red-400 hover:text-red-600 text-sm">Delete All Projects</button>
+        {/if}
+      </div>
+    {/if}
 
     {#if projects.length === 0}
       <div class="text-center py-16 text-gray-400">
