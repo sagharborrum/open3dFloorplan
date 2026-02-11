@@ -79,7 +79,7 @@
   let handleOrigRotation: number = 0;
 
   // Wall parallel drag state (drag midpoint to move wall parallel)
-  let draggingWallParallel: { wallId: string; startMousePos: Point; origStart: Point; origEnd: Point; origCurve?: Point } | null = $state(null);
+  let draggingWallParallel: { wallId: string; startMousePos: Point; origStart: Point; origEnd: Point; origCurve?: Point; connectedStart: { wallId: string; endpoint: 'start' | 'end' }[]; connectedEnd: { wallId: string; endpoint: 'start' | 'end' }[] } | null = $state(null);
 
   // Curve handle drag state
   let draggingCurveHandle: string | null = $state(null); // wallId being curved
@@ -183,11 +183,12 @@
     return results;
   }
 
-  function magneticSnap(p: Point): Point & { snappedToEndpoint?: boolean } {
+  function magneticSnap(p: Point, excludeWallIds?: Set<string>): Point & { snappedToEndpoint?: boolean } {
     if (!currentFloor) return { x: snap(p.x), y: snap(p.y) };
     let best: Point & { snappedToEndpoint?: boolean } = { x: snap(p.x), y: snap(p.y) };
     let bestDist = MAGNETIC_SNAP / zoom;
     for (const w of currentFloor.walls) {
+      if (excludeWallIds && excludeWallIds.has(w.id)) continue;
       for (const ep of [w.start, w.end]) {
         const d = Math.hypot(p.x - ep.x, p.y - ep.y);
         if (d < bestDist) {
@@ -1625,6 +1626,8 @@
                 startMousePos: { ...wp },
                 origStart: { ...selWall.start },
                 origEnd: { ...selWall.end },
+                connectedStart: findConnectedEndpoints(selWall.start, selWall.id),
+                connectedEnd: findConnectedEndpoints(selWall.end, selWall.id),
               };
             } else {
               // For curved walls, midpoint handle still curves
@@ -1740,8 +1743,10 @@
       panStartY = e.clientY;
     }
     if (draggingWallEndpoint) {
-      let pt = magneticSnap(mousePos);
-      // Angle snap to the opposite endpoint
+      // Exclude the dragged wall and all connected walls from magnetic snap targets
+      const excludeIds = new Set<string>([draggingWallEndpoint.wallId, ...draggingConnectedEndpoints.map(c => c.wallId)]);
+      let pt = magneticSnap(mousePos, excludeIds);
+      // Angle snap to the opposite endpoint of the primary wall being dragged
       if (currentFloor) {
         const wall = currentFloor.walls.find(w => w.id === draggingWallEndpoint!.wallId);
         if (wall) {
@@ -1775,14 +1780,23 @@
           const dx = proj * nx;
           const dy = proj * ny;
           // Set wall positions from original + offset
-          moveWallEndpoint(draggingWallParallel.wallId, 'start', {
+          const newStart = {
             x: draggingWallParallel.origStart.x + dx,
             y: draggingWallParallel.origStart.y + dy,
-          });
-          moveWallEndpoint(draggingWallParallel.wallId, 'end', {
+          };
+          const newEnd = {
             x: draggingWallParallel.origEnd.x + dx,
             y: draggingWallParallel.origEnd.y + dy,
-          });
+          };
+          moveWallEndpoint(draggingWallParallel.wallId, 'start', newStart);
+          moveWallEndpoint(draggingWallParallel.wallId, 'end', newEnd);
+          // Move connected walls' shared endpoints so adjacent walls stretch to stay connected
+          for (const conn of draggingWallParallel.connectedStart) {
+            moveWallEndpoint(conn.wallId, conn.endpoint, newStart);
+          }
+          for (const conn of draggingWallParallel.connectedEnd) {
+            moveWallEndpoint(conn.wallId, conn.endpoint, newEnd);
+          }
         }
       }
     }
