@@ -29,7 +29,7 @@ Systematic comparison. Each feature gets: ✅ done, 🔧 needs work, ❌ missing
 - ✅ Click to place, drag to move, scroll/R to rotate
 - 🔧 **Scale in 2D** — furniture rectangles need to render at correct cm scale relative to walls
 - 🔧 **Furniture icons** — using emoji, should use SVG top-down views (sofa looks like a sofa from above)
-- 🔧 **Snap to walls** — furniture should snap/align to nearby walls
+- ✅ **Snap to walls** — furniture snaps edge-flush to nearby walls with auto-rotation alignment
 - 🔧 **Selection handles** — resize handles, rotation handle (circle at corner)
 - ❌ **3D furniture models** — planner5d shows real 3D models; we show colored boxes
 - ❌ **Furniture properties** — color/material picker per item
@@ -112,7 +112,7 @@ Systematic comparison. Each feature gets: ✅ done, 🔧 needs work, ❌ missing
 
 ### Phase 3: Interaction Improvements  
 9. ✅ Drag doors/windows along walls — click to select, drag to slide along wall
-10. Furniture snap-to-wall
+10. ✅ Furniture snap-to-wall — auto-snaps edge flush to wall + aligns rotation, green highlight indicator
 11. Selection handles (resize, rotate)
 12. Wall endpoint drag-to-resize
 
