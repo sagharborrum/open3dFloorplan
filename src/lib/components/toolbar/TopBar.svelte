@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { currentProject, viewMode, undo, redo, addFloor, removeFloor, setActiveFloor, updateProjectName, loadProject } from '$lib/stores/project';
+  import { onMount } from 'svelte';
+  import { currentProject, viewMode, undo, redo, addFloor, removeFloor, setActiveFloor, updateProjectName, loadProject, createDefaultProject } from '$lib/stores/project';
   import { localStore } from '$lib/services/datastore';
   import { get } from 'svelte/store';
   import type { Floor, Project } from '$lib/models/types';
@@ -11,6 +12,7 @@
   let activeFloorId = $state('');
   let editingName = $state(false);
   let exportOpen = $state(false);
+  let exportRef: HTMLDivElement;
 
   currentProject.subscribe((p) => {
     if (p) {
@@ -89,6 +91,22 @@
     if (p) exportAsSVG(p);
     exportOpen = false;
   }
+
+  function newProject() {
+    if (!confirm('Create a new project? Unsaved changes will be lost.')) return;
+    currentProject.set(createDefaultProject());
+    exportOpen = false;
+  }
+
+  onMount(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (exportOpen && exportRef && !exportRef.contains(e.target as Node)) {
+        exportOpen = false;
+      }
+    }
+    document.addEventListener('click', handleClickOutside, true);
+    return () => document.removeEventListener('click', handleClickOutside, true);
+  });
 
   function onImportJSON() {
     const input = document.createElement('input');
@@ -173,7 +191,7 @@
   <div class="h-5 w-px bg-white/20"></div>
 
   <!-- Export dropdown -->
-  <div class="relative">
+  <div class="relative" bind:this={exportRef}>
     <button
       onclick={() => exportOpen = !exportOpen}
       class="px-3 py-1.5 text-sm text-white/90 hover:text-white hover:bg-white/10 rounded transition-colors"
@@ -186,6 +204,7 @@
         <button class="w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left" onclick={onExportJSON}>📄 Download Project JSON</button>
         <div class="h-px bg-gray-200 my-1"></div>
         <button class="w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left" onclick={onImportJSON}>📂 Import Project JSON</button>
+        <button class="w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left" onclick={newProject}>🆕 New Project</button>
       </div>
     {/if}
   </div>
