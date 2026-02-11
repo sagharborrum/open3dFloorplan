@@ -555,7 +555,7 @@
 
     const halfDoor = (door.width / 2) * zoom;
     const thickness = wallThicknessScreen(wall);
-    const wallAngle = Math.atan2(dy, dx);
+    const wallAngle = Math.atan2(uy, ux);
     const swingDir = door.swingDirection === 'left' ? 1 : -1;
 
     // Clear wall area for door gap (background color)
