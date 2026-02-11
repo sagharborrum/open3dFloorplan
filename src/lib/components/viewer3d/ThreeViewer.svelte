@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { activeFloor } from '$lib/stores/project';
+  import { activeFloor, detectedRoomsStore } from '$lib/stores/project';
   import type { Floor, Wall, Door, Window as Win, Room, Stair } from '$lib/models/types';
   import { wallColors, type WallColor } from '$lib/utils/materials';
   import * as THREE from 'three';
@@ -20,6 +20,7 @@
   let pointerControls: PointerLockControls;
   let animId: number;
   let currentFloor: Floor | null = null;
+  let savedRooms: Room[] = [];
   let wallGroup: THREE.Group;
   
   // Walkthrough mode
@@ -571,15 +572,9 @@
 
     // Room floors with materials + floating labels
     const FALLBACK_ROOM_COLORS = [0xbfdbfe, 0xfde68a, 0xbbf7d0, 0xfecaca, 0xddd6fe, 0xa5f3fc, 0xfed7aa];
-    let rooms = detectRooms(floor.walls);
-    // Merge user-edited room properties (name, floorTexture) from floor.rooms
-    for (const room of rooms) {
-      const saved = floor.rooms.find(r => r.id === room.id || (r.walls.length === room.walls.length && r.walls.every(w => room.walls.includes(w))));
-      if (saved) {
-        room.name = saved.name;
-        room.floorTexture = saved.floorTexture;
-      }
-    }
+    // Use detected rooms from the store (which have user-edited names/floorTextures)
+    // Fall back to fresh detection if store is empty
+    let rooms = savedRooms.length > 0 ? savedRooms : detectRooms(floor.walls);
     for (let ri = 0; ri < rooms.length; ri++) {
       const room = rooms[ri];
       const poly = getRoomPolygon(room, floor.walls);
@@ -901,9 +896,15 @@
       if (f) buildWalls(f);
     });
 
+    const unsubRooms = detectedRoomsStore.subscribe((rooms) => {
+      savedRooms = rooms;
+      if (currentFloor) buildWalls(currentFloor);
+    });
+
     return () => {
       resizeObs.disconnect();
       unsub();
+      unsubRooms();
       cancelAnimationFrame(animId);
       document.removeEventListener('keydown', onKeyDown, false);
       document.removeEventListener('keyup', onKeyUp, false);
