@@ -219,25 +219,19 @@
         </select>
       </label>
       <label class="block">
-        <span class="text-xs text-gray-500">Swing Direction</span>
-        <select value={selectedDoor.swingDirection} onchange={onDoorSwing} class="w-full px-2 py-1 border border-gray-200 rounded text-sm">
-          <option value="left">Left</option>
-          <option value="right">Right</option>
-        </select>
-      </label>
-      <div>
-        <span class="text-xs text-gray-500 block mb-1">Flip</span>
+        <span class="text-xs text-gray-500">Hinge Side</span>
         <div class="flex gap-2">
-          <button onclick={flipDoorHorizontal} class="flex-1 px-2 py-1.5 border border-gray-200 rounded text-sm hover:bg-blue-50 hover:border-blue-300 transition-colors flex items-center justify-center gap-1" title="Flip horizontal (swap hinge side)">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2v12M3 5l-1 3 1 3M13 5l1 3-1 3"/><path d="M2 8h4M10 8h4" stroke-dasharray="2 1"/></svg>
-            Horizontal
-          </button>
-          <button onclick={flipDoorVertical} class="flex-1 px-2 py-1.5 border border-gray-200 rounded text-sm hover:bg-blue-50 hover:border-blue-300 transition-colors flex items-center justify-center gap-1" title="Flip vertical (swap opening side of wall)">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8h12M5 3L8 2l3 1M5 13l3 1 3-1"/><path d="M8 2v4M8 10v4" stroke-dasharray="2 1"/></svg>
-            Vertical
-          </button>
+          <button onclick={() => { if (selectedDoor) updateDoor(selectedDoor.id, { swingDirection: 'left' }); }} class="flex-1 px-2 py-1.5 border rounded text-sm transition-colors {selectedDoor?.swingDirection === 'left' ? 'bg-blue-100 border-blue-400 text-blue-700' : 'border-gray-200 hover:bg-gray-50'}">Left</button>
+          <button onclick={() => { if (selectedDoor) updateDoor(selectedDoor.id, { swingDirection: 'right' }); }} class="flex-1 px-2 py-1.5 border rounded text-sm transition-colors {selectedDoor?.swingDirection === 'right' ? 'bg-blue-100 border-blue-400 text-blue-700' : 'border-gray-200 hover:bg-gray-50'}">Right</button>
         </div>
-      </div>
+      </label>
+      <label class="block">
+        <span class="text-xs text-gray-500">Opens</span>
+        <div class="flex gap-2">
+          <button onclick={() => { if (selectedDoor) updateDoor(selectedDoor.id, { flipSide: false }); }} class="flex-1 px-2 py-1.5 border rounded text-sm transition-colors {!(selectedDoor?.flipSide) ? 'bg-blue-100 border-blue-400 text-blue-700' : 'border-gray-200 hover:bg-gray-50'}">Inward</button>
+          <button onclick={() => { if (selectedDoor) updateDoor(selectedDoor.id, { flipSide: true }); }} class="flex-1 px-2 py-1.5 border rounded text-sm transition-colors {selectedDoor?.flipSide ? 'bg-blue-100 border-blue-400 text-blue-700' : 'border-gray-200 hover:bg-gray-50'}">Outward</button>
+        </div>
+      </label>
     </div>
 
   {:else if selectedWindow}
