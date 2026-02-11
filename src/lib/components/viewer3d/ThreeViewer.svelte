@@ -1,10 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { activeFloor } from '$lib/stores/project';
-  import type { Floor, Wall, Door, Window as Win } from '$lib/models/types';
+  import type { Floor, Wall, Door, Window as Win, Room } from '$lib/models/types';
   import * as THREE from 'three';
   import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
   import { getCatalogItem } from '$lib/utils/furnitureCatalog';
+  import { detectRooms, getRoomPolygon, roomCentroid } from '$lib/utils/roomDetection';
 
   let container: HTMLDivElement;
   let renderer: THREE.WebGLRenderer;
@@ -258,6 +259,54 @@
       line.position.copy(mesh.position);
       line.rotation.copy(mesh.rotation);
       wallGroup.add(line);
+    }
+
+    // Room floors with distinct colors + floating labels
+    const ROOM_COLORS = [0xbfdbfe, 0xfde68a, 0xbbf7d0, 0xfecaca, 0xddd6fe, 0xa5f3fc, 0xfed7aa];
+    const rooms = detectRooms(floor.walls);
+    for (let ri = 0; ri < rooms.length; ri++) {
+      const room = rooms[ri];
+      const poly = getRoomPolygon(room, floor.walls);
+      if (poly.length < 3) continue;
+
+      // Triangulate the polygon using ear-clipping via THREE.ShapeGeometry
+      const shape = new THREE.Shape();
+      shape.moveTo(poly[0].x, poly[0].y);
+      for (let i = 1; i < poly.length; i++) shape.lineTo(poly[i].x, poly[i].y);
+      shape.closePath();
+
+      const geo = new THREE.ShapeGeometry(shape);
+      const color = ROOM_COLORS[ri % ROOM_COLORS.length];
+      const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.9, transparent: true, opacity: 0.5 });
+      const mesh = new THREE.Mesh(geo, mat);
+      // Rotate to lie on XZ plane, slightly above base floor
+      mesh.rotation.x = -Math.PI / 2;
+      mesh.position.y = 1;
+      mesh.receiveShadow = true;
+      wallGroup.add(mesh);
+
+      // Floating room label using sprite
+      const centroid = roomCentroid(poly);
+      const canvas = document.createElement('canvas');
+      canvas.width = 256; canvas.height = 64;
+      const ctx2 = canvas.getContext('2d')!;
+      ctx2.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx2.roundRect(0, 0, 256, 64, 8);
+      ctx2.fill();
+      ctx2.fillStyle = '#ffffff';
+      ctx2.font = 'bold 22px sans-serif';
+      ctx2.textAlign = 'center';
+      ctx2.fillText(room.name, 128, 26);
+      ctx2.font = '16px sans-serif';
+      ctx2.fillStyle = '#d1d5db';
+      ctx2.fillText(`${room.area} m²`, 128, 50);
+
+      const tex = new THREE.CanvasTexture(canvas);
+      const spriteMat = new THREE.SpriteMaterial({ map: tex, transparent: true });
+      const sprite = new THREE.Sprite(spriteMat);
+      sprite.position.set(centroid.x, 30, centroid.y);
+      sprite.scale.set(150, 40, 1);
+      wallGroup.add(sprite);
     }
 
     autoCenterCamera(floor);
