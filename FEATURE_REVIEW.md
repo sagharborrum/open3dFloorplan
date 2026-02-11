@@ -10,9 +10,9 @@ Systematic comparison. Each feature gets: ✅ done, 🔧 needs work, ❌ missing
 - ✅ Dimension labels on walls
 - 🔧 **Wall thickness visual** — planner5d shows thick filled walls with proper joins; ours are thin lines
 - ✅ **Wall drag-to-resize** — grab a wall endpoint and drag to resize/reshape; connected corner endpoints move together
-- 🔧 **Wall segment editing** — click a wall to select, drag midpoint to move parallel
+- ✅ **Wall segment editing** — click a wall to select, drag midpoint to move parallel
 - ✅ **Curved walls** — quadratic bezier curves via draggable midpoint handle, toggle in properties panel
-- ❌ **Wall splitting** — click middle of wall to split into two segments
+- ✅ **Wall splitting** — click middle of wall to split into two segments (double-click or context toolbar button)
 
 ## 2. Doors & Windows
 - ✅ Can place doors and windows on walls
@@ -22,7 +22,7 @@ Systematic comparison. Each feature gets: ✅ done, 🔧 needs work, ❌ missing
 - 🔧 **Drag along wall** — doors/windows should slide along the wall they're on
 - 🔧 **Size relative to wall** — door default width should be ~90cm, window ~120cm
 - ❌ **Door/window catalog** — planner5d has multiple door types (single, double, sliding, French, pocket)
-- ❌ **Opening direction toggle** — easy flip of swing direction
+- ✅ **Opening direction toggle** — flip swing (left/right) + flip side (inward/outward) via context toolbar
 
 ## 3. Furniture Placement
 - ✅ Catalog with categories
@@ -39,8 +39,8 @@ Systematic comparison. Each feature gets: ✅ done, 🔧 needs work, ❌ missing
 - ✅ Room labels with name + area
 - ✅ Room type assignment with color coding
 - ✅ Room presets (Rectangle, L, T, U shapes)
-- 🔧 **Room fill opacity** — should be subtle, not overwhelming
-- ❌ **Room-specific floor materials in 2D** — floor texture pattern shown in 2D view
+- ✅ **Room fill opacity** — subtle 6-8% opacity fills per room type
+- ✅ **Room-specific floor materials in 2D** — subtle texture patterns (wood planks, tile grid, stone crosshatch) per room type
 
 ## 5. 2D Canvas / Viewport
 - ✅ Pan (space+drag or middle mouse)
@@ -50,7 +50,7 @@ Systematic comparison. Each feature gets: ✅ done, 🔧 needs work, ❌ missing
 - 🔧 **Canvas background** — planner5d uses very light gray with subtle grid; ours may be too dark/bright
 - 🔧 **Dimension arrows** — planner5d shows clean dimension lines with arrowheads outside the wall
 - ✅ **Ruler along edges** — horizontal/vertical rulers with auto-scaling ticks, mouse position indicators
-- ❌ **Area dimensions** — show room dimensions (width × depth) in the room center
+- ✅ **Area dimensions** — shows room width × depth below name label in room center
 
 ## 6. 3D View
 - ✅ Toggle 2D/3D
