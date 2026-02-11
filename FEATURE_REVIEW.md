@@ -119,8 +119,8 @@ Systematic comparison. Each feature gets: ✅ done, 🔧 needs work, ❌ missing
 ### Phase 4: 3D Enhancements
 13. ✅ Better door/window openings in 3D — proper frame jambs/header, hinged door panel ajar with handle, 4-pane mullion windows, baseboard gaps at doors
 14. ✅ Wall materials/colors — 3D walls respect wall.color property (interior color + auto-darkened exterior)
-15. Ceiling
-16. Improved lighting
+15. ✅ Ceiling — per-room ceiling at wall height, BackSide material visible from inside, off-white
+16. ✅ Improved lighting — 3-point setup: warm key sun, cool fill light, rim backlight; hemisphere boost
 
 ### Phase 5: Advanced
 17. Door/window catalog (types)
