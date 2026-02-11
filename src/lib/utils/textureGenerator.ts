@@ -481,6 +481,56 @@ export function generateHardwoodTexture(baseColor: string = '#c4a882'): HTMLCanv
 
 // ── MAIN ACCESSOR ──────────────────────────────────────────────
 
+/** Floor texture photo paths */
+const FLOOR_TEXTURES: Record<string, string> = {
+  'light-oak': '/textures/floor-light-oak.jpg',
+  'walnut': '/textures/floor-walnut.jpg',
+  'bamboo': '/textures/floor-bamboo.jpg',
+  'laminate': '/textures/floor-laminate.jpg',
+  'ceramic-white': '/textures/floor-tile-white.jpg',
+  'ceramic-gray': '/textures/floor-tile-gray.jpg',
+  'porcelain': '/textures/floor-porcelain.jpg',
+  'marble-white': '/textures/floor-marble-white.jpg',
+  'marble-dark': '/textures/floor-marble-dark.jpg',
+  'carpet-beige': '/textures/floor-carpet-beige.jpg',
+  'carpet-gray': '/textures/floor-carpet-gray.jpg',
+  'concrete': '/textures/floor-concrete.jpg',
+  'slate': '/textures/floor-slate.jpg',
+  'vinyl': '/textures/floor-vinyl.jpg',
+};
+
+export function getFloorTextureCanvas(materialId: string): HTMLCanvasElement | null {
+  const cacheKey = `photo-floor-${materialId}`;
+  if (cache.has(cacheKey)) return cache.get(cacheKey)!;
+
+  const url = FLOOR_TEXTURES[materialId];
+  if (!url) return null;
+
+  if (imageCache.has(`floor-${materialId}`)) {
+    const img = imageCache.get(`floor-${materialId}`)!;
+    const c = document.createElement('canvas');
+    c.width = img.naturalWidth; c.height = img.naturalHeight;
+    const cx = c.getContext('2d')!;
+    cx.drawImage(img, 0, 0);
+    cache.set(cacheKey, c);
+    return c;
+  }
+
+  const loadKey = `floor-${materialId}`;
+  if (!loadingSet.has(loadKey)) {
+    loadingSet.add(loadKey);
+    const img = new Image();
+    img.onload = () => {
+      imageCache.set(loadKey, img);
+      cache.delete(cacheKey);
+      if (onTextureLoadCallback) onTextureLoadCallback();
+    };
+    img.src = url;
+  }
+
+  return null;
+}
+
 /** Callback to invoke when a photo texture finishes loading (triggers re-render) */
 let onTextureLoadCallback: (() => void) | null = null;
 export function setTextureLoadCallback(cb: () => void) { onTextureLoadCallback = cb; }

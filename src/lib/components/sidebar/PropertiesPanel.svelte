@@ -534,40 +534,25 @@
         </div>
         <div class="grid grid-cols-3 gap-2">
           {#each floorMaterials as mat}
+            {@const floorTexPath = {
+              'light-oak': '/textures/floor-light-oak.jpg', 'walnut': '/textures/floor-walnut.jpg',
+              'bamboo': '/textures/floor-bamboo.jpg', 'laminate': '/textures/floor-laminate.jpg',
+              'ceramic-white': '/textures/floor-tile-white.jpg', 'ceramic-gray': '/textures/floor-tile-gray.jpg',
+              'porcelain': '/textures/floor-porcelain.jpg',
+              'marble-white': '/textures/floor-marble-white.jpg', 'marble-dark': '/textures/floor-marble-dark.jpg',
+              'carpet-beige': '/textures/floor-carpet-beige.jpg', 'carpet-gray': '/textures/floor-carpet-gray.jpg',
+              'concrete': '/textures/floor-concrete.jpg', 'slate': '/textures/floor-slate.jpg',
+              'vinyl': '/textures/floor-vinyl.jpg',
+            }[mat.id] ?? ''}
             <button
-              class="p-2 rounded-lg border-2 hover:border-gray-300 transition-colors text-xs {selectedRoom.floorTexture === mat.id ? 'border-blue-500 ring-1 ring-blue-200' : 'border-gray-200'}"
+              class="p-1.5 rounded-lg border-2 hover:border-gray-300 transition-colors text-xs {selectedRoom.floorTexture === mat.id ? 'border-blue-500 ring-1 ring-blue-200' : 'border-gray-200'}"
               title={mat.name}
               onclick={() => onRoomFloor(mat.id)}
             >
-              <div class="w-full h-7 rounded-md mb-1.5 relative overflow-hidden" style="background-color: {mat.color}">
-                {#if mat.pattern === 'hardwood' || mat.pattern === 'bamboo' || mat.pattern === 'laminate'}
-                  <!-- Wood grain pattern -->
-                  <div class="absolute inset-0 opacity-20" style="background: repeating-linear-gradient(90deg, transparent, transparent 3px, rgba(0,0,0,0.1) 3px, rgba(0,0,0,0.1) 4px)"></div>
-                {:else if mat.pattern === 'tile'}
-                  <!-- Tile grid pattern -->
-                  <div class="absolute inset-0 opacity-30" style="background: repeating-linear-gradient(0deg, transparent, transparent 6px, rgba(255,255,255,0.3) 6px, rgba(255,255,255,0.3) 7px), repeating-linear-gradient(90deg, transparent, transparent 6px, rgba(255,255,255,0.3) 6px, rgba(255,255,255,0.3) 7px)"></div>
-                {:else if mat.pattern === 'carpet'}
-                  <!-- Carpet texture -->
-                  <div class="absolute inset-0 opacity-40" style="background: repeating-linear-gradient(45deg, transparent, transparent 1px, rgba(0,0,0,0.1) 1px, rgba(0,0,0,0.1) 2px)"></div>
-                {:else if mat.pattern === 'marble'}
-                  <!-- Marble veins -->
-                  <div class="absolute inset-0 opacity-20" style="background: radial-gradient(ellipse at center, rgba(0,0,0,0.1) 0%, transparent 50%)"></div>
-                {/if}
-                <!-- Small pattern indicator icon -->
-                <div class="absolute bottom-0 right-0 text-black text-opacity-30 text-xs">
-                  {#if mat.pattern === 'hardwood' || mat.pattern === 'bamboo' || mat.pattern === 'laminate'}
-                    ═
-                  {:else if mat.pattern === 'tile'}
-                    ⊞
-                  {:else if mat.pattern === 'carpet'}
-                    ≈
-                  {:else if mat.pattern === 'marble'}
-                    ◊
-                  {:else}
-                    ▪
-                  {/if}
-                </div>
-              </div>
+              <div
+                class="w-full h-10 rounded-md mb-1 overflow-hidden"
+                style={floorTexPath ? `background-image: url(${floorTexPath}); background-size: cover; background-position: center;` : `background-color: ${mat.color}`}
+              ></div>
               <div class="text-center leading-3">{mat.name}</div>
             </button>
           {/each}

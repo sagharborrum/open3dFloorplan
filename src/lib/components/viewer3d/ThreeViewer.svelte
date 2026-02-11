@@ -10,7 +10,7 @@
   import { createFurnitureModel } from '$lib/utils/furnitureModels3d';
   import { detectRooms, getRoomPolygon, roomCentroid } from '$lib/utils/roomDetection';
   import { getMaterial } from '$lib/utils/materials';
-  import { getWallTextureCanvas, setTextureLoadCallback } from '$lib/utils/textureGenerator';
+  import { getWallTextureCanvas, getFloorTextureCanvas, setTextureLoadCallback } from '$lib/utils/textureGenerator';
 
   let container: HTMLDivElement;
   let renderer: THREE.WebGLRenderer;
@@ -589,12 +589,33 @@
       let material: THREE.MeshStandardMaterial;
       if (room.floorTexture) {
         const floorMat = getMaterial(room.floorTexture);
-        material = new THREE.MeshStandardMaterial({ 
-          color: new THREE.Color(floorMat.color), 
-          roughness: floorMat.roughness ?? 0.8,
-          transparent: false,
-          opacity: 1.0
-        });
+        const floorCanvas = getFloorTextureCanvas(room.floorTexture);
+        if (floorCanvas) {
+          const tex = new THREE.CanvasTexture(floorCanvas);
+          tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+          // Tile every 200cm
+          const tileSizeCm = 200;
+          const bounds = poly.reduce((b, p) => ({
+            minX: Math.min(b.minX, p.x), maxX: Math.max(b.maxX, p.x),
+            minY: Math.min(b.minY, p.y), maxY: Math.max(b.maxY, p.y),
+          }), { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity });
+          const roomW = bounds.maxX - bounds.minX;
+          const roomH = bounds.maxY - bounds.minY;
+          tex.repeat.set(roomW / tileSizeCm, roomH / tileSizeCm);
+          material = new THREE.MeshStandardMaterial({
+            map: tex,
+            roughness: floorMat.roughness ?? 0.8,
+            transparent: false,
+            opacity: 1.0
+          });
+        } else {
+          material = new THREE.MeshStandardMaterial({ 
+            color: new THREE.Color(floorMat.color), 
+            roughness: floorMat.roughness ?? 0.8,
+            transparent: false,
+            opacity: 1.0
+          });
+        }
       } else {
         // Fallback to old color system for rooms without specific materials
         const color = FALLBACK_ROOM_COLORS[ri % FALLBACK_ROOM_COLORS.length];
