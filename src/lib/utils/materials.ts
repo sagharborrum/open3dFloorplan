@@ -17,7 +17,7 @@ export const floorMaterials: FloorMaterial[] = [
   { id: 'carpet', name: 'Carpet', color: '#a8a29e', pattern: 'carpet' },
   { id: 'concrete', name: 'Concrete', color: '#9ca3af', pattern: 'concrete' },
   { id: 'marble', name: 'Marble', color: '#e8e5e0', pattern: 'marble' },
-  { id: 'light-wood', name: 'Light Wood', color: '#dpc9a8', pattern: 'hardwood' },
+  { id: 'light-wood', name: 'Light Wood', color: '#ddc9a8', pattern: 'hardwood' },
   { id: 'dark-wood', name: 'Dark Wood', color: '#8b6f47', pattern: 'hardwood' },
 ];
 
