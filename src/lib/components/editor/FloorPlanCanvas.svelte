@@ -832,7 +832,14 @@
   }
 
   function onDblClick(e: MouseEvent) {
-    if (currentTool === 'wall' && wallStart) { wallStart = null; wallSequenceFirst = null; }
+    if (currentTool === 'wall' && wallStart && wallSequenceFirst) {
+      // Auto-close the wall loop back to the first point if we have at least 2 walls
+      if (Math.hypot(wallStart.x - wallSequenceFirst.x, wallStart.y - wallSequenceFirst.y) > 5) {
+        addWall(wallStart, wallSequenceFirst);
+      }
+      wallStart = null;
+      wallSequenceFirst = null;
+    }
   }
 
   function onMouseMove(e: MouseEvent) {
