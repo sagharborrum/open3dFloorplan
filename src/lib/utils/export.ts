@@ -1,4 +1,6 @@
 import type { Project } from '$lib/models/types';
+import { getCatalogItem } from '$lib/utils/furnitureCatalog';
+import { detectRooms, getRoomPolygon, roomCentroid } from '$lib/utils/roomDetection';
 
 function download(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -37,6 +39,24 @@ export function exportAsSVG(project: Project) {
   const vh = maxY - minY + pad * 2;
 
   let paths = '';
+
+  // Room fills
+  const ROOM_COLORS_SVG = ['#bfdbfe', '#fde68a', '#bbf7d0', '#fecaca', '#ddd6fe', '#a5f3fc', '#fed7aa'];
+  const rooms = detectRooms(floor.walls);
+  for (let ri = 0; ri < rooms.length; ri++) {
+    const room = rooms[ri];
+    const poly = getRoomPolygon(room, floor.walls);
+    if (poly.length < 3) continue;
+    const pts = poly.map(p => `${p.x - minX + pad},${p.y - minY + pad}`).join(' ');
+    const color = ROOM_COLORS_SVG[ri % ROOM_COLORS_SVG.length];
+    paths += `  <polygon points="${pts}" fill="${color}" fill-opacity="0.4" stroke="none"/>\n`;
+    const c = roomCentroid(poly);
+    const cx = c.x - minX + pad;
+    const cy = c.y - minY + pad;
+    paths += `  <text x="${cx}" y="${cy}" text-anchor="middle" font-size="12" fill="#444" font-family="sans-serif" font-weight="bold">${room.name}</text>\n`;
+    paths += `  <text x="${cx}" y="${cy + 14}" text-anchor="middle" font-size="10" fill="#888" font-family="sans-serif">${room.area} m²</text>\n`;
+  }
+
   for (const w of floor.walls) {
     const x1 = w.start.x - minX + pad;
     const y1 = w.start.y - minY + pad;
@@ -63,11 +83,21 @@ export function exportAsSVG(project: Project) {
     paths += `  <circle cx="${px}" cy="${py}" r="4" fill="#8B4513"/>\n`;
   }
 
-  // Furniture rectangles
+  // Furniture rectangles (actual dimensions from catalog)
   for (const fi of floor.furniture) {
     const fx = fi.position.x - minX + pad;
     const fy = fi.position.y - minY + pad;
-    paths += `  <rect x="${fx - 15}" y="${fy - 15}" width="30" height="30" fill="#a0c4e8" stroke="#5588aa" stroke-width="1" rx="3"/>\n`;
+    const cat = getCatalogItem(fi.catalogId);
+    const fw = cat ? cat.width : 30;
+    const fd = cat ? cat.depth : 30;
+    const color = cat ? `#${cat.color.toString(16).padStart(6, '0')}` : '#a0c4e8';
+    const rot = fi.rotation || 0;
+    paths += `  <g transform="translate(${fx},${fy}) rotate(${rot})">\n`;
+    paths += `    <rect x="${-fw / 2}" y="${-fd / 2}" width="${fw}" height="${fd}" fill="${color}" stroke="#555" stroke-width="0.5" rx="2" opacity="0.7"/>\n`;
+    if (cat) {
+      paths += `    <text x="0" y="4" text-anchor="middle" font-size="9" fill="#333" font-family="sans-serif">${cat.name}</text>\n`;
+    }
+    paths += `  </g>\n`;
   }
 
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
