@@ -692,6 +692,35 @@
     return () => { resizeObs.disconnect(); unsub1(); unsub2(); unsub3(); unsub4(); unsub5(); unsub6(); unsub7(); };
   });
 
+  function zoomToFit() {
+    if (!currentFloor || currentFloor.walls.length === 0) {
+      camX = 0; camY = 0; zoom = 1;
+      return;
+    }
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const w of currentFloor.walls) {
+      for (const p of [w.start, w.end]) {
+        minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+        minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+      }
+    }
+    for (const fi of currentFloor.furniture) {
+      const cat = getCatalogItem(fi.catalogId);
+      if (!cat) continue;
+      minX = Math.min(minX, fi.position.x - cat.width / 2);
+      maxX = Math.max(maxX, fi.position.x + cat.width / 2);
+      minY = Math.min(minY, fi.position.y - cat.depth / 2);
+      maxY = Math.max(maxY, fi.position.y + cat.depth / 2);
+    }
+    const padding = 80;
+    const contentW = maxX - minX + padding * 2;
+    const contentH = maxY - minY + padding * 2;
+    camX = (minX + maxX) / 2;
+    camY = (minY + maxY) / 2;
+    zoom = Math.min(width / contentW, height / contentH, 3);
+    zoom = Math.max(zoom, 0.1);
+  }
+
   function findWallAt(p: Point): Wall | null {
     if (!currentFloor) return null;
     for (const w of currentFloor.walls) {
@@ -903,6 +932,9 @@
       measuring = !measuring;
       if (!measuring) { measureStart = null; measureEnd = null; }
     }
+    if (e.key === 'f' || e.key === 'F') {
+      zoomToFit();
+    }
     // 'C' to close wall loop back to first point
     if ((e.key === 'c' || e.key === 'C') && wallStart && wallSequenceFirst) {
       if (Math.hypot(wallStart.x - wallSequenceFirst.x, wallStart.y - wallSequenceFirst.y) > 5) {
@@ -972,6 +1004,7 @@
       <span class="text-gray-300">|</span>
     {/if}
     <span>Zoom: {Math.round(zoom * 100)}%</span>
+    <button class="hover:text-gray-700" onclick={() => zoomToFit()} title="Zoom to Fit (F)">⊞ Fit</button>
     <button class="hover:text-gray-700" onclick={() => showGrid = !showGrid} title="Toggle Grid (G)">
       {showGrid ? '▦' : '▢'} Grid
     </button>

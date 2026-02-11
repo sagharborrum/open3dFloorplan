@@ -84,6 +84,7 @@
           <div class="text-gray-600">Pan</div><div class="font-mono text-slate-800">Space + Drag</div>
           <div class="text-gray-600">Zoom</div><div class="font-mono text-slate-800">Scroll</div>
           <div class="text-gray-600">Toggle grid</div><div class="font-mono text-slate-800">G</div>
+          <div class="text-gray-600">Zoom to fit</div><div class="font-mono text-slate-800">F</div>
           <div class="text-gray-600">Measure</div><div class="font-mono text-slate-800">M / Right-click</div>
 
           <div class="font-semibold text-gray-400 col-span-2 mt-3 mb-1 uppercase text-xs">Edit</div>
