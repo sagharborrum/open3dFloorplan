@@ -4,7 +4,9 @@
   import type { Floor, Wall, Door, Window as Win, Room } from '$lib/models/types';
   import * as THREE from 'three';
   import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+  import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
   import { getCatalogItem } from '$lib/utils/furnitureCatalog';
+  import { createFurnitureModel } from '$lib/utils/furnitureModels3d';
   import { detectRooms, getRoomPolygon, roomCentroid } from '$lib/utils/roomDetection';
 
   let container: HTMLDivElement;
@@ -12,9 +14,23 @@
   let scene: THREE.Scene;
   let camera: THREE.PerspectiveCamera;
   let controls: OrbitControls;
+  let pointerControls: PointerLockControls;
   let animId: number;
   let currentFloor: Floor | null = null;
   let wallGroup: THREE.Group;
+  
+  // Walkthrough mode
+  let walkthroughMode = $state(false);
+  let moveForward = false;
+  let moveBackward = false;
+  let moveLeft = false;
+  let moveRight = false;
+  let canJump = false;
+  let velocity = new THREE.Vector3();
+  const direction = new THREE.Vector3();
+  const MOVE_SPEED = 200; // cm/s
+  const SPRINT_SPEED = 400; // cm/s
+  const EYE_HEIGHT = 160; // cm
 
   const WALL_THICKNESS = 15;
   const BASEBOARD_HEIGHT = 8;
@@ -449,22 +465,11 @@
     for (const fi of floor.furniture) {
       const cat = getCatalogItem(fi.catalogId);
       if (!cat) continue;
-      const mat = new THREE.MeshStandardMaterial({ color: cat.color, roughness: 0.7 });
-      const geo = new THREE.BoxGeometry(cat.width, cat.height, cat.depth);
-      const mesh = new THREE.Mesh(geo, mat);
-      mesh.position.set(fi.position.x, cat.height / 2, fi.position.y);
-      mesh.rotation.y = -(fi.rotation * Math.PI) / 180;
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-      wallGroup.add(mesh);
-
-      // Edge outline
-      const edges = new THREE.EdgesGeometry(geo);
-      const lineMat = new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.2 });
-      const line = new THREE.LineSegments(edges, lineMat);
-      line.position.copy(mesh.position);
-      line.rotation.copy(mesh.rotation);
-      wallGroup.add(line);
+      const model = createFurnitureModel(fi.catalogId, cat);
+      model.position.set(fi.position.x, 0, fi.position.y);
+      model.rotation.y = -(fi.rotation * Math.PI) / 180;
+      if (fi.scale) model.scale.set(fi.scale.x, 1, fi.scale.y);
+      wallGroup.add(model);
     }
 
     // Room floors with distinct colors + floating labels
