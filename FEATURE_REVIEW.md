@@ -58,10 +58,10 @@ Systematic comparison. Each feature gets: ✅ done, 🔧 needs work, ❌ missing
 - ✅ Floor texture
 - ✅ Orbit camera controls
 - ✅ Room floor fills with labels
-- 🔧 **Door/window openings** — verify doors create proper openings in 3D walls
+- ✅ **Door/window openings** — proper 3D frames, hinged doors, mullion windows, baseboard gaps
 - 🔧 **Lighting quality** — planner5d has nice ambient + directional; ours might need tuning
 - ❌ **3D furniture** — only colored boxes, not models
-- ❌ **Material/texture on walls** — paint colors, wallpaper, etc.
+- ✅ **Material/texture on walls** — wall color property reflected in 3D (interior + exterior)
 - ❌ **Ceiling** — planner5d shows ceiling in 3D
 - ❌ **First-person walkthrough** — planner5d has a walk mode
 
@@ -117,8 +117,8 @@ Systematic comparison. Each feature gets: ✅ done, 🔧 needs work, ❌ missing
 12. ✅ Wall endpoint drag-to-resize — grab selected wall endpoints to move them, with magnetic snap + angle snapping
 
 ### Phase 4: 3D Enhancements
-13. Better door/window openings in 3D
-14. Wall materials/colors
+13. ✅ Better door/window openings in 3D — proper frame jambs/header, hinged door panel ajar with handle, 4-pane mullion windows, baseboard gaps at doors
+14. ✅ Wall materials/colors — 3D walls respect wall.color property (interior color + auto-darkened exterior)
 15. Ceiling
 16. Improved lighting
 
