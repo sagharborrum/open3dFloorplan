@@ -146,6 +146,15 @@ export function setFurnitureRotation(id: string, angle: number) {
   });
 }
 
+export function scaleFurniture(id: string, scale: { x: number; y: number }) {
+  mutate((f) => {
+    const fi = f.furniture.find((item) => item.id === id);
+    if (fi) {
+      fi.scale = { x: Math.max(0.2, scale.x), y: Math.max(0.2, scale.y), z: fi.scale.z };
+    }
+  });
+}
+
 export function removeFurniture(id: string) {
   mutate((f) => {
     f.furniture = f.furniture.filter((fi) => fi.id !== id);

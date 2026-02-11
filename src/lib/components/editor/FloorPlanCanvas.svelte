@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { activeFloor, selectedTool, selectedElementId, selectedRoomId, addWall, addDoor, addWindow, updateDoor, updateWindow, addFurniture, moveFurniture, commitFurnitureMove, rotateFurniture, setFurnitureRotation, removeElement, placingFurnitureId, placingRotation, detectedRoomsStore } from '$lib/stores/project';
+  import { activeFloor, selectedTool, selectedElementId, selectedRoomId, addWall, addDoor, addWindow, updateDoor, updateWindow, addFurniture, moveFurniture, commitFurnitureMove, rotateFurniture, setFurnitureRotation, scaleFurniture, removeElement, placingFurnitureId, placingRotation, detectedRoomsStore } from '$lib/stores/project';
   import type { Point, Wall, Door, Window as Win, FurnitureItem } from '$lib/models/types';
   import type { Floor, Room } from '$lib/models/types';
   import { detectRooms, getRoomPolygon, roomCentroid } from '$lib/utils/roomDetection';
@@ -60,6 +60,13 @@
   let currentPlacingId: string | null = $state(null);
   let currentPlacingRotation: number = $state(0);
   let currentTool: string = $state('select');
+
+  // Resize/rotate handle drag state
+  type HandleType = 'resize-tl' | 'resize-tr' | 'resize-bl' | 'resize-br' | 'rotate';
+  let draggingHandle: HandleType | null = $state(null);
+  let handleDragStart: Point = { x: 0, y: 0 };
+  let handleOrigScale: { x: number; y: number } = { x: 1, y: 1 };
+  let handleOrigRotation: number = 0;
 
   // Wall snap state for visual feedback
   let wallSnapInfo: { wallId: string; side: 'normal' | 'anti'; wallAngle: number } | null = $state(null);
@@ -459,8 +466,8 @@
     const cat = getCatalogItem(item.catalogId);
     if (!cat) return;
     const s = worldToScreen(item.position.x, item.position.y);
-    const w = cat.width * zoom;
-    const d = cat.depth * zoom;
+    const w = cat.width * (item.scale?.x ?? 1) * zoom;
+    const d = cat.depth * (item.scale?.y ?? 1) * zoom;
     const angle = (item.rotation * Math.PI) / 180;
 
     ctx.save();
@@ -482,17 +489,51 @@
       ctx.fillText(cat.name, 0, d / 2 + fontSize * 0.8);
     }
 
-    // Rotation handle when selected
+    // Selection handles when selected
     if (selected) {
-      ctx.fillStyle = '#3b82f6';
-      ctx.beginPath();
-      ctx.arc(0, -d / 2 - 8, 4, 0, Math.PI * 2);
-      ctx.fill();
+      // Dashed selection border
+      ctx.strokeStyle = '#3b82f6';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 3]);
+      ctx.strokeRect(-w / 2 - 2, -d / 2 - 2, w + 4, d + 4);
+      ctx.setLineDash([]);
+
+      // Resize handles at corners
+      const hs = 5; // handle half-size
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = '#3b82f6';
+      ctx.lineWidth = 1.5;
+      for (const [hx, hy] of [[-w/2, -d/2], [w/2, -d/2], [-w/2, d/2], [w/2, d/2]]) {
+        ctx.fillRect(hx - hs, hy - hs, hs * 2, hs * 2);
+        ctx.strokeRect(hx - hs, hy - hs, hs * 2, hs * 2);
+      }
+
+      // Rotation handle — circle with stem above
+      const rotY = -d / 2 - 18;
       ctx.strokeStyle = '#3b82f6';
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(0, -d / 2);
-      ctx.lineTo(0, -d / 2 - 8);
+      ctx.moveTo(0, -d / 2 - 2);
+      ctx.lineTo(0, rotY + 5);
+      ctx.stroke();
+      ctx.fillStyle = '#3b82f6';
+      ctx.beginPath();
+      ctx.arc(0, rotY, 5, 0, Math.PI * 2);
+      ctx.fill();
+      // Small rotation arrow icon
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.arc(0, rotY, 3, -Math.PI * 0.8, Math.PI * 0.4);
+      ctx.stroke();
+      // Arrowhead
+      const arrowAngle = Math.PI * 0.4;
+      const ax = Math.cos(arrowAngle) * 3;
+      const ay = Math.sin(arrowAngle) * 3;
+      ctx.beginPath();
+      ctx.moveTo(ax + 1.5, rotY + ay - 1);
+      ctx.lineTo(ax, rotY + ay);
+      ctx.lineTo(ax - 1, rotY + ay - 2);
       ctx.stroke();
     }
 
@@ -911,6 +952,34 @@
     return null;
   }
 
+  function findHandleAt(p: Point): HandleType | null {
+    if (!currentFloor || !currentSelectedId) return null;
+    const fi = currentFloor.furniture.find(f => f.id === currentSelectedId);
+    if (!fi) return null;
+    const cat = getCatalogItem(fi.catalogId);
+    if (!cat) return null;
+    const dx = p.x - fi.position.x;
+    const dy = p.y - fi.position.y;
+    const angle = -(fi.rotation * Math.PI) / 180;
+    const rx = dx * Math.cos(angle) - dy * Math.sin(angle);
+    const ry = dx * Math.sin(angle) + dy * Math.cos(angle);
+    const hw = cat.width * (fi.scale?.x ?? 1) / 2;
+    const hd = cat.depth * (fi.scale?.y ?? 1) / 2;
+    const ht = 8 / zoom; // handle tolerance in world coords
+
+    // Rotation handle (above the top)
+    const rotHandleDist = 18 / zoom;
+    if (Math.abs(rx) < ht && Math.abs(ry - (-hd - rotHandleDist)) < ht) return 'rotate';
+
+    // Corner resize handles
+    if (Math.abs(rx - (-hw)) < ht && Math.abs(ry - (-hd)) < ht) return 'resize-tl';
+    if (Math.abs(rx - hw) < ht && Math.abs(ry - (-hd)) < ht) return 'resize-tr';
+    if (Math.abs(rx - (-hw)) < ht && Math.abs(ry - hd) < ht) return 'resize-bl';
+    if (Math.abs(rx - hw) < ht && Math.abs(ry - hd) < ht) return 'resize-br';
+
+    return null;
+  }
+
   function findFurnitureAt(p: Point): FurnitureItem | null {
     if (!currentFloor) return null;
     for (const fi of [...currentFloor.furniture].reverse()) {
@@ -921,7 +990,9 @@
       const angle = -(fi.rotation * Math.PI) / 180;
       const rx = dx * Math.cos(angle) - dy * Math.sin(angle);
       const ry = dx * Math.sin(angle) + dy * Math.cos(angle);
-      if (Math.abs(rx) < cat.width / 2 && Math.abs(ry) < cat.depth / 2) return fi;
+      const hw = cat.width * (fi.scale?.x ?? 1) / 2;
+      const hd = cat.depth * (fi.scale?.y ?? 1) / 2;
+      if (Math.abs(rx) < hw && Math.abs(ry) < hd) return fi;
     }
     return null;
   }
@@ -1031,6 +1102,19 @@
         }
       }
     } else if (tool === 'select') {
+      // Check selection handles first (resize/rotate on selected furniture)
+      const handle = findHandleAt(wp);
+      if (handle && currentSelectedId && currentFloor) {
+        const fi = currentFloor.furniture.find(f => f.id === currentSelectedId);
+        if (fi) {
+          draggingHandle = handle;
+          handleDragStart = { ...wp };
+          handleOrigScale = { x: fi.scale?.x ?? 1, y: fi.scale?.y ?? 1 };
+          handleOrigRotation = fi.rotation;
+          commitFurnitureMove(); // snapshot for undo
+          return;
+        }
+      }
       // Check doors/windows first (they sit on walls, so check before walls)
       const door = findDoorAt(wp);
       if (door) {
@@ -1105,6 +1189,36 @@
       panStartX = e.clientX;
       panStartY = e.clientY;
     }
+    if (draggingHandle && currentSelectedId && currentFloor) {
+      const fi = currentFloor.furniture.find(f => f.id === currentSelectedId);
+      if (fi) {
+        const cat = getCatalogItem(fi.catalogId);
+        if (cat) {
+          if (draggingHandle === 'rotate') {
+            // Rotate based on angle from furniture center to mouse
+            const dx = mousePos.x - fi.position.x;
+            const dy = mousePos.y - fi.position.y;
+            let angle = Math.atan2(dx, -dy) * 180 / Math.PI; // 0° = up
+            // Snap to 15° increments
+            angle = Math.round(angle / 15) * 15;
+            setFurnitureRotation(currentSelectedId, ((angle % 360) + 360) % 360);
+          } else {
+            // Resize: compute delta in furniture-local coords
+            const dx = mousePos.x - fi.position.x;
+            const dy = mousePos.y - fi.position.y;
+            const ang = -(fi.rotation * Math.PI) / 180;
+            const localX = dx * Math.cos(ang) - dy * Math.sin(ang);
+            const localY = dx * Math.sin(ang) + dy * Math.cos(ang);
+            // Scale based on corner position
+            let newSx = Math.abs(localX * 2) / cat.width;
+            let newSy = Math.abs(localY * 2) / cat.depth;
+            newSx = Math.max(0.3, Math.round(newSx * 20) / 20); // snap to 0.05
+            newSy = Math.max(0.3, Math.round(newSy * 20) / 20);
+            scaleFurniture(currentSelectedId, { x: newSx, y: newSy });
+          }
+        }
+      }
+    }
     if (draggingFurnitureId) {
       const basePos = { x: mousePos.x - dragOffset.x, y: mousePos.y - dragOffset.y };
       const fi = currentFloor?.furniture.find(f => f.id === draggingFurnitureId);
@@ -1149,9 +1263,11 @@
   function onMouseUp() {
     isPanning = false;
     if (draggingFurnitureId) commitFurnitureMove();
+    if (draggingHandle) commitFurnitureMove();
     draggingFurnitureId = null;
     draggingDoorId = null;
     draggingWindowId = null;
+    draggingHandle = null;
     wallSnapInfo = null;
     if (measuring && measureStart && measureEnd) {
       // Keep measurement visible until next click
@@ -1234,6 +1350,8 @@
 
   let cursorStyle = $derived(
     spaceDown || isPanning ? 'grab' :
+    draggingHandle === 'rotate' ? 'grabbing' :
+    draggingHandle?.startsWith('resize') ? 'nwse-resize' :
     currentTool === 'select' ? 'default' :
     currentTool === 'furniture' ? 'copy' :
     'crosshair'
