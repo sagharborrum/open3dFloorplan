@@ -1023,13 +1023,16 @@
     if (!cat) return;
     const s = worldToScreen(item.position.x, item.position.y);
     // Use overridden dimensions or fall back to catalog defaults
-    const w = (item.width ?? cat.width) * (item.scale?.x ?? 1) * zoom;
-    const d = (item.depth ?? cat.depth) * (item.scale?.y ?? 1) * zoom;
+    const sx = item.scale?.x ?? 1;
+    const sy = item.scale?.y ?? 1;
+    const w = (item.width ?? cat.width) * Math.abs(sx) * zoom;
+    const d = (item.depth ?? cat.depth) * Math.abs(sy) * zoom;
     const angle = (item.rotation * Math.PI) / 180;
 
     ctx.save();
     ctx.translate(s.x, s.y);
     ctx.rotate(angle);
+    ctx.scale(Math.sign(sx) || 1, Math.sign(sy) || 1);
 
     // Architectural top-down icon - use overridden color or catalog default
     const itemColor = item.color ?? cat.color;
@@ -2154,8 +2157,8 @@
     const angle = -(fi.rotation * Math.PI) / 180;
     const rx = dx * Math.cos(angle) - dy * Math.sin(angle);
     const ry = dx * Math.sin(angle) + dy * Math.cos(angle);
-    const hw = cat.width * (fi.scale?.x ?? 1) / 2;
-    const hd = cat.depth * (fi.scale?.y ?? 1) / 2;
+    const hw = cat.width * Math.abs(fi.scale?.x ?? 1) / 2;
+    const hd = cat.depth * Math.abs(fi.scale?.y ?? 1) / 2;
     const ht = 8 / zoom; // handle tolerance in world coords
 
     // Rotation handle (above the top)
@@ -2181,8 +2184,8 @@
       const angle = -(fi.rotation * Math.PI) / 180;
       const rx = dx * Math.cos(angle) - dy * Math.sin(angle);
       const ry = dx * Math.sin(angle) + dy * Math.cos(angle);
-      const hw = cat.width * (fi.scale?.x ?? 1) / 2;
-      const hd = cat.depth * (fi.scale?.y ?? 1) / 2;
+      const hw = cat.width * Math.abs(fi.scale?.x ?? 1) / 2;
+      const hd = cat.depth * Math.abs(fi.scale?.y ?? 1) / 2;
       if (Math.abs(rx) < hw && Math.abs(ry) < hd) return fi;
     }
     return null;

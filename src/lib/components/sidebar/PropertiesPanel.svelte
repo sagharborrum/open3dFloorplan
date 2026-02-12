@@ -527,11 +527,37 @@
         <span class="text-xs text-gray-500">Rotation (degrees)</span>
         <input 
           type="number" 
-          value={selectedFurniture.rotation} 
+          value={Math.round(selectedFurniture.rotation * 100) / 100} 
           oninput={onFurnitureRotation} 
           class="w-full px-2 py-1 border border-gray-200 rounded text-sm" 
         />
       </label>
+
+      <!-- Rotate / Flip controls -->
+      <div class="flex gap-1">
+        <button
+          onclick={() => { if (selectedFurniture) updateFurniture(selectedFurniture.id, { rotation: selectedFurniture.rotation - 90 }); }}
+          class="flex-1 px-2 py-1.5 border border-gray-200 rounded text-sm hover:bg-gray-50 transition-colors"
+          title="Rotate 90° left"
+        >↺ 90°</button>
+        <button
+          onclick={() => { if (selectedFurniture) updateFurniture(selectedFurniture.id, { rotation: selectedFurniture.rotation + 90 }); }}
+          class="flex-1 px-2 py-1.5 border border-gray-200 rounded text-sm hover:bg-gray-50 transition-colors"
+          title="Rotate 90° right"
+        >↻ 90°</button>
+      </div>
+      <div class="flex gap-1">
+        <button
+          onclick={() => { if (selectedFurniture) { const s = selectedFurniture.scale; updateFurniture(selectedFurniture.id, { scale: { x: s.x * -1, y: s.y, z: s.z } }); } }}
+          class="flex-1 px-2 py-1.5 border border-gray-200 rounded text-sm hover:bg-gray-50 transition-colors"
+          title="Flip horizontally"
+        >↔ Flip H</button>
+        <button
+          onclick={() => { if (selectedFurniture) { const s = selectedFurniture.scale; updateFurniture(selectedFurniture.id, { scale: { x: s.x, y: s.y * -1, z: s.z } }); } }}
+          class="flex-1 px-2 py-1.5 border border-gray-200 rounded text-sm hover:bg-gray-50 transition-colors"
+          title="Flip vertically"
+        >↕ Flip V</button>
+      </div>
       
       <!-- Reset button -->
       <button
