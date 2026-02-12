@@ -140,7 +140,88 @@ function projectOntoWall(wall: Wall, pt: Point): number {
   return Math.max(0.01, Math.min(0.99, t));
 }
 
-export function importRoomPlan(jsonData: any): Floor {
+/**
+ * Straighten walls: snap near-horizontal/vertical walls to axis-aligned,
+ * then merge nearby endpoints so corners meet cleanly.
+ */
+function straightenWalls(walls: Wall[], angleTolerance = 5, mergeDistance = 15): void {
+  const tolRad = (angleTolerance * Math.PI) / 180;
+
+  // Pass 1: Snap walls that are nearly axis-aligned
+  for (const wall of walls) {
+    const dx = wall.end.x - wall.start.x;
+    const dy = wall.end.y - wall.start.y;
+    const angle = Math.atan2(dy, dx);
+    const len = Math.hypot(dx, dy);
+    if (len < 1) continue;
+
+    // Check if near 0°, 90°, 180°, 270°
+    const snappedAngle = [0, Math.PI / 2, Math.PI, -Math.PI / 2, -Math.PI].find(
+      a => Math.abs(((angle - a + Math.PI * 3) % (Math.PI * 2)) - Math.PI) < tolRad
+    );
+
+    if (snappedAngle !== undefined) {
+      // Recalculate endpoints from midpoint + snapped angle
+      const mx = (wall.start.x + wall.end.x) / 2;
+      const my = (wall.start.y + wall.end.y) / 2;
+      const halfLen = len / 2;
+      const cdx = Math.cos(snappedAngle) * halfLen;
+      const cdy = Math.sin(snappedAngle) * halfLen;
+      wall.start.x = Math.round(mx - cdx);
+      wall.start.y = Math.round(my - cdy);
+      wall.end.x = Math.round(mx + cdx);
+      wall.end.y = Math.round(my + cdy);
+    }
+  }
+
+  // Pass 2: Merge nearby endpoints — collect all endpoints, cluster them, snap to cluster average
+  const endpoints: { wall: Wall; which: 'start' | 'end' }[] = [];
+  for (const wall of walls) {
+    endpoints.push({ wall, which: 'start' });
+    endpoints.push({ wall, which: 'end' });
+  }
+
+  const merged = new Set<number>();
+  for (let i = 0; i < endpoints.length; i++) {
+    if (merged.has(i)) continue;
+    const pi = endpoints[i].which === 'start' ? endpoints[i].wall.start : endpoints[i].wall.end;
+    const cluster = [i];
+
+    for (let j = i + 1; j < endpoints.length; j++) {
+      if (merged.has(j)) continue;
+      const pj = endpoints[j].which === 'start' ? endpoints[j].wall.start : endpoints[j].wall.end;
+      if (Math.hypot(pi.x - pj.x, pi.y - pj.y) < mergeDistance) {
+        cluster.push(j);
+      }
+    }
+
+    if (cluster.length > 1) {
+      // Average position
+      let ax = 0, ay = 0;
+      for (const idx of cluster) {
+        const p = endpoints[idx].which === 'start' ? endpoints[idx].wall.start : endpoints[idx].wall.end;
+        ax += p.x; ay += p.y;
+      }
+      ax = Math.round(ax / cluster.length);
+      ay = Math.round(ay / cluster.length);
+
+      for (const idx of cluster) {
+        const ep = endpoints[idx];
+        if (ep.which === 'start') { ep.wall.start.x = ax; ep.wall.start.y = ay; }
+        else { ep.wall.end.x = ax; ep.wall.end.y = ay; }
+        merged.add(idx);
+      }
+    }
+  }
+}
+
+export interface RoomPlanImportOptions {
+  straighten?: boolean;
+  angleTolerance?: number;   // degrees, default 5
+  mergeDistance?: number;     // cm, default 15
+}
+
+export function importRoomPlan(jsonData: any, options: RoomPlanImportOptions = {}): Floor {
   const rpWalls: RPWall[] = jsonData.walls ?? [];
   const rpDoors: RPDoorWindow[] = jsonData.doors ?? [];
   const rpWindows: RPDoorWindow[] = jsonData.windows ?? [];
@@ -199,6 +280,11 @@ export function importRoomPlan(jsonData: any): Floor {
       height: Math.round(height),
       color: '#444444',
     });
+  }
+
+  // Straighten walls if requested
+  if (options.straighten !== false) {
+    straightenWalls(walls, options.angleTolerance ?? 5, options.mergeDistance ?? 15);
   }
 
   // Process doors

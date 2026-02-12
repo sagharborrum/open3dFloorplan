@@ -12,6 +12,7 @@
   let activeTab = $state<'draw' | 'rooms' | 'objects'>('draw');
   let constructionOpen = $state(true);
   let selectedCategory = $state<string>('All');
+  let straightenWalls = $state(true);
 
   function setTool(tool: Tool) {
     selectedTool.set(tool);
@@ -139,7 +140,7 @@
           const text = await file.text();
           jsonData = JSON.parse(text);
         }
-        const floor = importRoomPlan(jsonData);
+        const floor = importRoomPlan(jsonData, { straighten: straightenWalls });
         const project: Project = {
           id: Math.random().toString(36).slice(2, 10),
           name: file.name.replace(/\.(json|zip)$/, ''),
@@ -278,6 +279,10 @@
             <div class="text-xs text-gray-400">iOS LiDAR scan (.json/.zip)</div>
           </div>
         </button>
+        <label class="flex items-center gap-2 px-3 py-1 text-xs text-gray-500 cursor-pointer hover:bg-gray-50 rounded" onclick={(e) => e.stopPropagation()}>
+          <input type="checkbox" bind:checked={straightenWalls} class="accent-blue-500" />
+          <span>Straighten walls on import</span>
+        </label>
 
         <button
           class="w-full flex items-center justify-between px-1 py-2 mt-3"
