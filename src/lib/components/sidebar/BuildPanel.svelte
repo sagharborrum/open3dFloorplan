@@ -332,8 +332,10 @@
           <div class="grid grid-cols-2 gap-2 mb-3">
             {#each doorCatalog as dc}
               <button
-                class="flex flex-col items-center gap-1 p-2.5 rounded-lg border-2 transition-colors {currentTool === 'door' && selectedDoorType === dc.type ? 'border-blue-400 bg-blue-50' : 'border-gray-100 hover:border-gray-200'}"
+                class="flex flex-col items-center gap-1 p-2.5 rounded-lg border-2 transition-colors cursor-grab active:cursor-grabbing {currentTool === 'door' && selectedDoorType === dc.type ? 'border-blue-400 bg-blue-50' : 'border-gray-100 hover:border-gray-200'}"
                 onclick={() => setDoorType(dc.type)}
+                draggable="true"
+                ondragstart={(e) => { e.dataTransfer?.setData('application/o3d-type', 'door'); e.dataTransfer?.setData('application/o3d-id', dc.type); }}
               >
                 <div class="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#92400e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="{dc.icon}"/></svg>
@@ -348,8 +350,10 @@
           <div class="grid grid-cols-2 gap-2">
             {#each windowCatalog as wc}
               <button
-                class="flex flex-col items-center gap-1 p-2.5 rounded-lg border-2 transition-colors {currentTool === 'window' && selectedWindowType === wc.type ? 'border-blue-400 bg-blue-50' : 'border-gray-100 hover:border-gray-200'}"
+                class="flex flex-col items-center gap-1 p-2.5 rounded-lg border-2 transition-colors cursor-grab active:cursor-grabbing {currentTool === 'window' && selectedWindowType === wc.type ? 'border-blue-400 bg-blue-50' : 'border-gray-100 hover:border-gray-200'}"
                 onclick={() => setWindowType(wc.type)}
+                draggable="true"
+                ondragstart={(e) => { e.dataTransfer?.setData('application/o3d-type', 'window'); e.dataTransfer?.setData('application/o3d-id', wc.type); }}
               >
                 <div class="w-9 h-9 rounded-lg bg-cyan-50 flex items-center justify-center">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0e7490" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="1"/><line x1="12" y1="4" x2="12" y2="20"/><line x1="3" y1="12" x2="21" y2="12"/></svg>
@@ -369,8 +373,10 @@
         <div class="grid grid-cols-2 gap-2">
           {#each roomPresets as preset}
             <button
-              class="flex flex-col items-center gap-1.5 p-3 rounded-lg border-2 border-gray-100 hover:border-blue-300 hover:bg-blue-50 transition-colors"
+              class="flex flex-col items-center gap-1.5 p-3 rounded-lg border-2 border-gray-100 hover:border-blue-300 hover:bg-blue-50 transition-colors cursor-grab active:cursor-grabbing"
               onclick={() => onPresetClick(preset.id)}
+              draggable="true"
+              ondragstart={(e) => { e.dataTransfer?.setData('application/o3d-type', 'room'); e.dataTransfer?.setData('application/o3d-id', preset.id); }}
             >
               <div class="w-12 h-12 rounded-lg bg-gray-50 flex items-center justify-center text-2xl font-mono">{preset.icon}</div>
               <span class="text-xs font-medium text-gray-600">{preset.name}</span>
@@ -404,8 +410,10 @@
         <div class="grid grid-cols-2 gap-2 mt-2">
           {#each filtered as item}
             <button
-              class="flex flex-col items-center gap-1 p-3 rounded-lg border-2 transition-colors {currentPlacing === item.id ? 'border-blue-400 bg-blue-50 ring-1 ring-blue-300' : 'border-gray-100 hover:border-blue-300 hover:bg-blue-50'}"
+              class="flex flex-col items-center gap-1 p-3 rounded-lg border-2 transition-colors cursor-grab active:cursor-grabbing {currentPlacing === item.id ? 'border-blue-400 bg-blue-50 ring-1 ring-blue-300' : 'border-gray-100 hover:border-blue-300 hover:bg-blue-50'}"
               onclick={() => onFurnitureClick(item)}
+              draggable="true"
+              ondragstart={(e) => { e.dataTransfer?.setData('application/o3d-type', 'furniture'); e.dataTransfer?.setData('application/o3d-id', item.id); }}
             >
               {#if thumbsReady >= 0 && getModelFile(item.id) && getThumbnail(getModelFile(item.id)!)}
                 <img src={getThumbnail(getModelFile(item.id)!)} alt={item.name} class="w-12 h-12 object-contain" />

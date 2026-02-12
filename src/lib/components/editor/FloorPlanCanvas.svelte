@@ -8,6 +8,7 @@
   import { getCatalogItem } from '$lib/utils/furnitureCatalog';
   import { drawFurnitureIcon } from '$lib/utils/furnitureIcons';
   import { handleGlobalShortcut } from '$lib/utils/shortcuts';
+  import { roomPresets, placePreset } from '$lib/utils/roomPresets';
   import { getWallTextureCanvas, getFloorTextureCanvas, setTextureLoadCallback } from '$lib/utils/textureGenerator';
   import { projectSettings, formatLength } from '$lib/stores/settings';
   import type { ProjectSettings } from '$lib/stores/settings';
@@ -3013,6 +3014,86 @@
     if (e.code === 'Space') spaceDown = false;
   }
 
+  function onDragOver(e: DragEvent) {
+    if (e.dataTransfer?.types.includes('application/o3d-type')) {
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+    }
+  }
+
+  function onDrop(e: DragEvent) {
+    e.preventDefault();
+    const itemType = e.dataTransfer?.getData('application/o3d-type');
+    const itemId = e.dataTransfer?.getData('application/o3d-id');
+    if (!itemType || !itemId) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const sx = e.clientX - rect.left;
+    const sy = e.clientY - rect.top;
+    const wp = screenToWorld(sx, sy);
+    const pos = { x: snap(wp.x), y: snap(wp.y) };
+
+    if (itemType === 'furniture') {
+      const id = addFurniture(itemId, pos);
+      selectedElementId.set(id);
+      selectedTool.set('select');
+      placingFurnitureId.set(null);
+    } else if (itemType === 'door') {
+      // Find nearest wall to drop point and add door there
+      const floor = currentFloor;
+      if (floor) {
+        let bestWall: Wall | null = null;
+        let bestDist = Infinity;
+        let bestT = 0.5;
+        for (const w of floor.walls) {
+          const dx = w.end.x - w.start.x;
+          const dy = w.end.y - w.start.y;
+          const lenSq = dx * dx + dy * dy;
+          if (lenSq < 1) continue;
+          const t = Math.max(0.05, Math.min(0.95, ((wp.x - w.start.x) * dx + (wp.y - w.start.y) * dy) / lenSq));
+          const px = w.start.x + t * dx;
+          const py = w.start.y + t * dy;
+          const dist = Math.hypot(wp.x - px, wp.y - py);
+          if (dist < bestDist) { bestDist = dist; bestWall = w; bestT = t; }
+        }
+        if (bestWall && bestDist < 100) {
+          const id = addDoor(bestWall.id, bestT, itemId as Door['type']);
+          selectedElementId.set(id);
+          selectedTool.set('select');
+        }
+      }
+    } else if (itemType === 'window') {
+      const floor = currentFloor;
+      if (floor) {
+        let bestWall: Wall | null = null;
+        let bestDist = Infinity;
+        let bestT = 0.5;
+        for (const w of floor.walls) {
+          const dx = w.end.x - w.start.x;
+          const dy = w.end.y - w.start.y;
+          const lenSq = dx * dx + dy * dy;
+          if (lenSq < 1) continue;
+          const t = Math.max(0.05, Math.min(0.95, ((wp.x - w.start.x) * dx + (wp.y - w.start.y) * dy) / lenSq));
+          const px = w.start.x + t * dx;
+          const py = w.start.y + t * dy;
+          const dist = Math.hypot(wp.x - px, wp.y - py);
+          if (dist < bestDist) { bestDist = dist; bestWall = w; bestT = t; }
+        }
+        if (bestWall && bestDist < 100) {
+          const id = addWindow(bestWall.id, bestT, itemId as Win['type']);
+          selectedElementId.set(id);
+          selectedTool.set('select');
+        }
+      }
+    } else if (itemType === 'room') {
+      const preset = roomPresets.find(p => p.id === itemId);
+      if (preset) {
+        placePreset(preset, pos);
+        selectedTool.set('select');
+      }
+    }
+  }
+
   function onContextMenu(e: MouseEvent) {
     e.preventDefault();
     // Right-click starts/ends measurement
@@ -3054,6 +3135,8 @@
     ondblclick={onDblClick}
     onwheel={onWheel}
     oncontextmenu={onContextMenu}
+    ondragover={onDragOver}
+    ondrop={onDrop}
   ></canvas>
   <div class="absolute bottom-2 right-2 bg-white/80 rounded px-2 py-1 text-xs text-gray-500 flex gap-3">
     {#if detectedRooms.length > 0}
