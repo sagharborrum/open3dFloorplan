@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { activeFloor, detectedRoomsStore } from '$lib/stores/project';
+  import { activeFloor, detectedRoomsStore, selectedElementId } from '$lib/stores/project';
   import type { Floor, Wall, Door, Window as Win, Room, Stair } from '$lib/models/types';
   import { wallColors, type WallColor } from '$lib/utils/materials';
   import * as THREE from 'three';
@@ -23,6 +23,13 @@
   let savedRooms: Room[] = [];
   let wallGroup: THREE.Group;
   
+  // Raycasting for wall selection in 3D
+  const raycaster = new THREE.Raycaster();
+  const mouse = new THREE.Vector2();
+  const wallMeshMap = new Map<THREE.Object3D, string>(); // mesh → wallId
+  let selectedWallId3D: string | null = null;
+  const originalEmissive = new Map<THREE.Object3D, THREE.Color>();
+
   // Walkthrough mode
   let walkthroughMode = $state(false);
   let moveForward = false;
@@ -119,7 +126,35 @@
     controls.dampingFactor = 0.08;
     controls.target.set(0, 100, 0);
     controls.maxPolarAngle = Math.PI / 2.05;
-    
+
+    // Click-to-select walls via raycasting
+    let pointerDownPos = { x: 0, y: 0 };
+    renderer.domElement.addEventListener('pointerdown', (e) => {
+      pointerDownPos = { x: e.clientX, y: e.clientY };
+    });
+    renderer.domElement.addEventListener('pointerup', (e) => {
+      // Only treat as click if mouse didn't move much (not a drag/orbit)
+      const dx = e.clientX - pointerDownPos.x;
+      const dy = e.clientY - pointerDownPos.y;
+      if (Math.hypot(dx, dy) > 5) return;
+      if (walkthroughMode) return;
+
+      const rect = renderer.domElement.getBoundingClientRect();
+      mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(mouse, camera);
+
+      const intersects = raycaster.intersectObjects(wallGroup.children, false);
+      let hitWallId: string | null = null;
+      for (const hit of intersects) {
+        if (hit.object.userData.wallId) {
+          hitWallId = hit.object.userData.wallId;
+          break;
+        }
+      }
+      selectedElementId.set(hitWallId);
+    });
+
     // Initialize PointerLock controls for walkthrough mode
     pointerControls = new PointerLockControls(camera, renderer.domElement);
     
@@ -252,6 +287,7 @@
 
   function buildWalls(floor: Floor) {
     while (wallGroup.children.length) wallGroup.remove(wallGroup.children[0]);
+    wallMeshMap.clear();
 
     const defaultInteriorMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 });
     const defaultExteriorMat = new THREE.MeshStandardMaterial({ color: 0xd4cfc9, roughness: 0.85 });
@@ -324,6 +360,8 @@
           mesh.receiveShadow = true;
           mesh.position.set(segCx, h / 2, segCy);
           mesh.rotation.y = -segAngle;
+          mesh.userData.wallId = wall.id;
+          wallMeshMap.set(mesh, wall.id);
           wallGroup.add(mesh);
         }
         // Baseboard for curved wall
@@ -382,6 +420,8 @@
           cy + localX * Math.sin(angle)
         );
         mesh.rotation.y = -angle;
+        mesh.userData.wallId = wall.id;
+        wallMeshMap.set(mesh, wall.id);
         wallGroup.add(mesh);
       }
 
@@ -956,10 +996,36 @@
       if (currentFloor) buildWalls(currentFloor);
     });
 
+    // Highlight selected wall in 3D
+    const unsubSel = selectedElementId.subscribe((id) => {
+      // Restore previously highlighted meshes
+      for (const [mesh, origColor] of originalEmissive) {
+        const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+        for (const m of mats) if (m instanceof THREE.MeshStandardMaterial) m.emissive.copy(origColor);
+      }
+      originalEmissive.clear();
+      selectedWallId3D = id;
+      if (!id) return;
+      // Highlight matching wall meshes
+      for (const [mesh, wallId] of wallMeshMap) {
+        if (wallId === id) {
+          const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+          for (const m of mats) {
+            if (m instanceof THREE.MeshStandardMaterial) {
+              originalEmissive.set(mesh, m.emissive.clone());
+              m.emissive.set(0x3388ff);
+              m.emissiveIntensity = 0.3;
+            }
+          }
+        }
+      }
+    });
+
     return () => {
       resizeObs.disconnect();
       unsub();
       unsubRooms();
+      unsubSel();
       cancelAnimationFrame(animId);
       document.removeEventListener('keydown', onKeyDown, false);
       document.removeEventListener('keyup', onKeyUp, false);
