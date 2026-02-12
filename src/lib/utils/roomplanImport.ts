@@ -192,41 +192,73 @@ function angleDiff(a: number, b: number): number {
 }
 
 /**
- * Enforce orthogonal: snap every wall to the nearest axis direction
- * (0°, 90°, 180°, 270°) so all walls are perfectly horizontal or vertical.
+ * Enforce orthogonal: find the dominant rotation of the whole layout,
+ * then rotate ALL points by its inverse so walls become axis-aligned.
+ * This preserves topology (connected corners stay connected).
  */
-function enforceOrthogonal(walls: Wall[], mergeDistance = 15): void {
+function enforceOrthogonal(walls: Wall[], mergeDistance = 15, furniture?: FurnitureItem[]): void {
   if (walls.length === 0) return;
 
-  const AXES = [0, Math.PI / 2, Math.PI, -Math.PI / 2]; // right, down, left, up
-
+  // 1. Find dominant angle (mod π/2) using weighted circular mean
+  let sinSum = 0, cosSum = 0;
   for (const wall of walls) {
     const dx = wall.end.x - wall.start.x;
     const dy = wall.end.y - wall.start.y;
     const len = Math.hypot(dx, dy);
     if (len < 1) continue;
+    // Use 4× angle so π/2 wraps to 2π (circular mean in mod-π/2 space)
+    const angle = Math.atan2(dy, dx) * 4;
+    sinSum += Math.sin(angle) * len;
+    cosSum += Math.cos(angle) * len;
+  }
+  const dominantAngle = Math.atan2(sinSum, cosSum) / 4;
 
-    const currentAngle = Math.atan2(dy, dx);
-
-    // Find nearest axis angle
-    let bestAngle = 0;
-    let bestDiff = Infinity;
-    for (const a of AXES) {
-      const diff = angleDiff(currentAngle, a);
-      if (diff < bestDiff) { bestDiff = diff; bestAngle = a; }
-    }
-
-    // Recalculate endpoints from midpoint + snapped angle
-    const mx = (wall.start.x + wall.end.x) / 2;
-    const my = (wall.start.y + wall.end.y) / 2;
-    const halfLen = len / 2;
-    wall.start.x = Math.round(mx - Math.cos(bestAngle) * halfLen);
-    wall.start.y = Math.round(my - Math.sin(bestAngle) * halfLen);
-    wall.end.x = Math.round(mx + Math.cos(bestAngle) * halfLen);
-    wall.end.y = Math.round(my + Math.sin(bestAngle) * halfLen);
+  // 2. Find nearest axis to dominant angle (0, π/2, π, -π/2)
+  const AXES = [0, Math.PI / 2, Math.PI, -Math.PI / 2];
+  let bestAxis = 0;
+  let bestDiff = Infinity;
+  for (const a of AXES) {
+    const diff = angleDiff(dominantAngle, a);
+    if (diff < bestDiff) { bestDiff = diff; bestAxis = a; }
   }
 
-  // Re-merge endpoints after snapping
+  // Rotation to apply: snap dominant → nearest axis
+  const rotationAngle = bestAxis - dominantAngle;
+
+  // 3. Find centroid of all wall endpoints
+  let cx = 0, cy = 0, n = 0;
+  for (const wall of walls) {
+    cx += wall.start.x + wall.end.x;
+    cy += wall.start.y + wall.end.y;
+    n += 2;
+  }
+  cx /= n; cy /= n;
+
+  const cosR = Math.cos(rotationAngle);
+  const sinR = Math.sin(rotationAngle);
+
+  function rotatePoint(p: { x: number; y: number }) {
+    const dx = p.x - cx;
+    const dy = p.y - cy;
+    p.x = Math.round(cx + dx * cosR - dy * sinR);
+    p.y = Math.round(cy + dx * sinR + dy * cosR);
+  }
+
+  // 4. Rotate all wall endpoints
+  for (const wall of walls) {
+    rotatePoint(wall.start);
+    rotatePoint(wall.end);
+  }
+
+  // 5. Rotate furniture positions
+  if (furniture) {
+    for (const f of furniture) {
+      rotatePoint(f.position);
+      f.rotation = (f.rotation ?? 0) + (rotationAngle * 180) / Math.PI;
+    }
+  }
+
+  // 6. Merge nearby endpoints
   mergeEndpoints(walls, mergeDistance);
 }
 
@@ -339,14 +371,6 @@ export function importRoomPlan(jsonData: any, options: RoomPlanImportOptions = {
     });
   }
 
-  // Post-process walls
-  const md = options.mergeDistance ?? 15;
-  if (options.orthogonal) {
-    enforceOrthogonal(walls, md);
-  } else if (options.straighten !== false) {
-    straightenWalls(walls, options.angleTolerance ?? 5, md);
-  }
-
   // Process doors
   for (const rd of rpDoors) {
     const parentWallId = rd.parentIdentifier ? wallIdMap.get(rd.parentIdentifier) : undefined;
@@ -410,6 +434,14 @@ export function importRoomPlan(jsonData: any, options: RoomPlanImportOptions = {
       depth: Math.round(ro.dimensions[2] * 100),
       height: Math.round(ro.dimensions[1] * 100),
     });
+  }
+
+  // Post-process walls (after doors/windows/furniture so projections use original positions)
+  const md = options.mergeDistance ?? 15;
+  if (options.orthogonal) {
+    enforceOrthogonal(walls, md, furniture);
+  } else if (options.straighten !== false) {
+    straightenWalls(walls, options.angleTolerance ?? 5, md);
   }
 
   // Process sections (rooms)
