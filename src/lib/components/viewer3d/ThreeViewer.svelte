@@ -8,6 +8,7 @@
   import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
   import { getCatalogItem } from '$lib/utils/furnitureCatalog';
   import { createFurnitureModel } from '$lib/utils/furnitureModels3d';
+  import { createFurnitureModelWithGLB } from '$lib/utils/furnitureModelLoader';
   import { detectRooms, getRoomPolygon, roomCentroid } from '$lib/utils/roomDetection';
   import { getMaterial } from '$lib/utils/materials';
   import { getWallTextureCanvas, getFloorTextureCanvas, setTextureLoadCallback } from '$lib/utils/textureGenerator';
@@ -664,7 +665,10 @@
         depth: fi.depth ?? cat.depth,
         height: fi.height ?? cat.height,
       };
-      const model = createFurnitureModel(fi.catalogId, furnitureDef);
+      const model = createFurnitureModelWithGLB(fi.catalogId, furnitureDef, () => {
+        // Re-render when GLB model finishes loading
+        if (renderer && scene && camera) renderer.render(scene, camera);
+      });
       model.position.set(fi.position.x, 0, fi.position.y);
       model.rotation.y = -(fi.rotation * Math.PI) / 180;
       if (fi.scale) model.scale.set(fi.scale.x, 1, fi.scale.y);
