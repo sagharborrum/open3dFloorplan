@@ -31,17 +31,24 @@ export const furnitureCatalog: FurnitureDef[] = [
   { id: 'sink_k', name: 'Sink', category: 'Kitchen', icon: '🚰', color: '#94a3b8', width: 60, depth: 45, height: 85 },
   { id: 'counter', name: 'Counter', category: 'Kitchen', icon: '🔲', color: '#78716c', width: 120, depth: 60, height: 85 },
   { id: 'dishwasher', name: 'Dishwasher', category: 'Kitchen', icon: '🫧', color: '#cbd5e1', width: 60, depth: 60, height: 85 },
+  { id: 'oven', name: 'Oven', category: 'Kitchen', icon: '🔥', color: '#78716c', width: 60, depth: 60, height: 85 },
   // Bathroom
   { id: 'toilet', name: 'Toilet', category: 'Bathroom', icon: '🚽', color: '#e5e7eb', width: 40, depth: 65, height: 40 },
   { id: 'bathtub', name: 'Bathtub', category: 'Bathroom', icon: '🛁', color: '#93c5fd', width: 170, depth: 75, height: 60 },
   { id: 'shower', name: 'Shower', category: 'Bathroom', icon: '🚿', color: '#bae6fd', width: 90, depth: 90, height: 210 },
   { id: 'sink_b', name: 'Sink', category: 'Bathroom', icon: '🪥', color: '#cbd5e1', width: 60, depth: 45, height: 85 },
+  { id: 'washer_dryer', name: 'Washer/Dryer', category: 'Bathroom', icon: '👕', color: '#e2e8f0', width: 60, depth: 65, height: 85 },
   // Office
   { id: 'desk', name: 'Desk', category: 'Office', icon: '🖥️', color: '#34d399', width: 140, depth: 70, height: 75 },
   { id: 'office_chair', name: 'Office Chair', category: 'Office', icon: '🪑', color: '#6b7280', width: 45, depth: 45, height: 90 },
   // Dining
   { id: 'dining_table', name: 'Dining Table', category: 'Dining', icon: '🍽️', color: '#f59e0b', width: 120, depth: 80, height: 75 },
   { id: 'dining_chair', name: 'Dining Chair', category: 'Dining', icon: '🪑', color: '#d97706', width: 45, depth: 45, height: 90 },
+  // Living Room extras
+  { id: 'fireplace', name: 'Fireplace', category: 'Living Room', icon: '🔥', color: '#92400e', width: 120, depth: 40, height: 120 },
+  { id: 'television', name: 'Television', category: 'Living Room', icon: '📺', color: '#1e293b', width: 120, depth: 8, height: 70 },
+  { id: 'storage', name: 'Storage Cabinet', category: 'Living Room', icon: '🗄️', color: '#78716c', width: 100, depth: 50, height: 120 },
+  { id: 'table', name: 'Table', category: 'Living Room', icon: '🪑', color: '#a16207', width: 100, depth: 60, height: 75 },
   // Decor
   { id: 'rug', name: 'Rug', category: 'Decor', icon: '🟫', color: '#c2956b', width: 200, depth: 300, height: 1 },
   { id: 'round_rug', name: 'Round Rug', category: 'Decor', icon: '⭕', color: '#b87d5e', width: 200, depth: 200, height: 1 },

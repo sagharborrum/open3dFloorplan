@@ -89,23 +89,25 @@ function mapFurnitureCatalogId(cat: any, dims: number[]): string {
   const heightM = dims[1];
 
   const mapping: Record<string, () => string> = {
-    sofa: () => widthM > 1.5 ? 'sofa-3seat' : 'sofa-2seat',
-    table: () => heightM > 0.6 ? 'dining-table' : 'coffee-table',
-    chair: () => 'dining-chair',
-    bed: () => widthM > 1.4 ? 'bed-double' : 'bed-single',
-    storage: () => 'bookshelf',
+    sofa: () => widthM > 1.5 ? 'sofa' : 'loveseat',
+    table: () => heightM > 0.6 ? 'dining_table' : 'coffee_table',
+    chair: () => 'chair',
+    bed: () => widthM > 1.4 ? 'bed_queen' : 'bed_twin',
+    storage: () => 'storage',
     toilet: () => 'toilet',
     bathtub: () => 'bathtub',
-    sink: () => 'sink-bathroom',
-    refrigerator: () => 'refrigerator',
+    sink: () => 'sink_b',
+    refrigerator: () => 'fridge',
     stove: () => 'stove',
     oven: () => 'oven',
-    television: () => 'tv-stand',
-    washerDryer: () => 'washer',
-    fireplace: () => 'bookshelf',
+    dishwasher: () => 'dishwasher',
+    television: () => 'television',
+    washerDryer: () => 'washer_dryer',
+    fireplace: () => 'fireplace',
+    stairs: () => 'storage',
   };
 
-  return mapping[key]?.() ?? 'dining-chair';
+  return mapping[key]?.() ?? 'chair';
 }
 
 function mapSectionLabel(label: string): string {

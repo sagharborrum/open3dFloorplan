@@ -88,6 +88,9 @@ export function createFurnitureModel(catalogId: string, def: FurnitureDef): THRE
     case 'dishwasher':
       createDishwasher(group, w, d, h, color);
       break;
+    case 'oven':
+      createOven(group, w, d, h, color);
+      break;
     case 'toilet':
       createToilet(group, w, d, h, color);
       break;
@@ -100,6 +103,9 @@ export function createFurnitureModel(catalogId: string, def: FurnitureDef): THRE
     case 'sink_b':
       createBathroomSink(group, w, d, h, color);
       break;
+    case 'washer_dryer':
+      createWasherDryer(group, w, d, h, color);
+      break;
     case 'desk':
       createDesk(group, w, d, h, color);
       break;
@@ -111,6 +117,18 @@ export function createFurnitureModel(catalogId: string, def: FurnitureDef): THRE
       break;
     case 'dining_chair':
       createDiningChair(group, w, d, h, color);
+      break;
+    case 'fireplace':
+      createFireplace(group, w, d, h, color);
+      break;
+    case 'television':
+      createTelevision(group, w, d, h, color);
+      break;
+    case 'storage':
+      createStorage(group, w, d, h, color);
+      break;
+    case 'table':
+      createGenericTable(group, w, d, h, color);
       break;
     // Decor
     case 'rug':
@@ -759,6 +777,159 @@ function createDiningChair(group: THREE.Group, w: number, d: number, h: number, 
     [w * 0.35, h * 0.25, -d * 0.35],
     [-w * 0.35, h * 0.25, d * 0.35],
     [w * 0.35, h * 0.25, d * 0.35]
+  ];
+  positions.forEach(pos => {
+    const leg = new THREE.Mesh(legGeo, legColor);
+    leg.position.set(pos[0], pos[1], pos[2]);
+    group.add(leg);
+  });
+}
+
+// RoomPlan-specific furniture
+function createOven(group: THREE.Group, w: number, d: number, h: number, color: string): void {
+  const bodyColor = createMaterial(color, 0.5, 0.3);
+  const glassColor = createMaterial('#1a1a1a', 0.1, 0.5);
+  glassColor.transparent = true;
+  glassColor.opacity = 0.7;
+
+  const bodyGeo = new THREE.BoxGeometry(w, h, d);
+  const bodyMesh = new THREE.Mesh(bodyGeo, bodyColor);
+  bodyMesh.position.set(0, h / 2, 0);
+  group.add(bodyMesh);
+
+  // Oven door window
+  const windowGeo = new THREE.BoxGeometry(w * 0.7, h * 0.4, d * 0.02);
+  const windowMesh = new THREE.Mesh(windowGeo, glassColor);
+  windowMesh.position.set(0, h * 0.4, d * 0.51);
+  group.add(windowMesh);
+
+  // Handle
+  const handleColor = createMaterial('#333', 0.3, 0.8);
+  const handleGeo = new THREE.BoxGeometry(w * 0.6, h * 0.03, d * 0.03);
+  const handleMesh = new THREE.Mesh(handleGeo, handleColor);
+  handleMesh.position.set(0, h * 0.75, d * 0.52);
+  group.add(handleMesh);
+}
+
+function createWasherDryer(group: THREE.Group, w: number, d: number, h: number, color: string): void {
+  const bodyColor = createMaterial(color, 0.4, 0.3);
+  const drumColor = createMaterial('#e2e8f0', 0.2, 0.5);
+
+  const bodyGeo = new THREE.BoxGeometry(w, h, d);
+  const bodyMesh = new THREE.Mesh(bodyGeo, bodyColor);
+  bodyMesh.position.set(0, h / 2, 0);
+  group.add(bodyMesh);
+
+  // Drum circle on front
+  const drumGeo = new THREE.CylinderGeometry(w * 0.3, w * 0.3, d * 0.02, 24);
+  drumGeo.rotateX(Math.PI / 2);
+  const drumMesh = new THREE.Mesh(drumGeo, drumColor);
+  drumMesh.position.set(0, h * 0.45, d * 0.51);
+  group.add(drumMesh);
+
+  // Control panel
+  const panelColor = createMaterial('#94a3b8', 0.3, 0.2);
+  const panelGeo = new THREE.BoxGeometry(w * 0.8, h * 0.12, d * 0.02);
+  const panelMesh = new THREE.Mesh(panelGeo, panelColor);
+  panelMesh.position.set(0, h * 0.85, d * 0.51);
+  group.add(panelMesh);
+}
+
+function createFireplace(group: THREE.Group, w: number, d: number, h: number, color: string): void {
+  const mantelColor = createMaterial(color, 0.8, 0.1);
+  const fireboxColor = createMaterial('#1a1a1a', 0.9, 0.0);
+
+  // Mantel surround
+  const mantelGeo = new THREE.BoxGeometry(w, h, d);
+  const mantelMesh = new THREE.Mesh(mantelGeo, mantelColor);
+  mantelMesh.position.set(0, h / 2, 0);
+  group.add(mantelMesh);
+
+  // Firebox opening (carved out front)
+  const openingGeo = new THREE.BoxGeometry(w * 0.6, h * 0.55, d * 0.7);
+  const openingMesh = new THREE.Mesh(openingGeo, fireboxColor);
+  openingMesh.position.set(0, h * 0.3, d * 0.2);
+  group.add(openingMesh);
+
+  // Mantel shelf on top
+  const shelfGeo = new THREE.BoxGeometry(w * 1.1, h * 0.08, d * 1.1);
+  const shelfMesh = new THREE.Mesh(shelfGeo, mantelColor);
+  shelfMesh.position.set(0, h * 0.96, 0);
+  group.add(shelfMesh);
+
+  // Fire glow light
+  const light = new THREE.PointLight(0xff6600, 0.4, 200);
+  light.position.set(0, h * 0.3, d * 0.3);
+  group.add(light);
+}
+
+function createTelevision(group: THREE.Group, w: number, d: number, h: number, color: string): void {
+  const screenColor = createMaterial(color, 0.1, 0.8);
+  const bezelColor = createMaterial('#111', 0.3, 0.5);
+
+  // Screen panel
+  const screenGeo = new THREE.BoxGeometry(w, h, d);
+  const screenMesh = new THREE.Mesh(screenGeo, bezelColor);
+  screenMesh.position.set(0, h / 2 + 80, 0); // Mounted at ~80cm
+  group.add(screenMesh);
+
+  // Screen face
+  const faceGeo = new THREE.BoxGeometry(w - 4, h - 4, 1);
+  const faceMat = createMaterial('#222', 0.05, 0.9);
+  const faceMesh = new THREE.Mesh(faceGeo, faceMat);
+  faceMesh.position.set(0, h / 2 + 80, d * 0.45);
+  group.add(faceMesh);
+}
+
+function createStorage(group: THREE.Group, w: number, d: number, h: number, color: string): void {
+  const bodyColor = createMaterial(color);
+  const doorColor = createMaterial(color, 0.7, 0.1);
+  doorColor.color.multiplyScalar(0.95);
+
+  const bodyGeo = new THREE.BoxGeometry(w, h, d);
+  const bodyMesh = new THREE.Mesh(bodyGeo, bodyColor);
+  bodyMesh.position.set(0, h / 2, 0);
+  group.add(bodyMesh);
+
+  // Two doors
+  const splitGeo = new THREE.BoxGeometry(w * 0.02, h * 0.9, d * 0.02);
+  const splitMesh = new THREE.Mesh(splitGeo, doorColor);
+  splitMesh.position.set(0, h / 2, d * 0.5);
+  group.add(splitMesh);
+
+  // Shelf line
+  const shelfGeo = new THREE.BoxGeometry(w * 0.95, h * 0.02, d * 0.9);
+  const shelfMesh = new THREE.Mesh(shelfGeo, doorColor);
+  shelfMesh.position.set(0, h * 0.5, 0);
+  group.add(shelfMesh);
+
+  // Knobs
+  const knobGeo = new THREE.SphereGeometry(w * 0.02);
+  const knobMat = createMaterial('#333', 0.3, 0.8);
+  const leftKnob = new THREE.Mesh(knobGeo, knobMat);
+  leftKnob.position.set(-w * 0.15, h * 0.5, d * 0.52);
+  group.add(leftKnob);
+  const rightKnob = new THREE.Mesh(knobGeo, knobMat);
+  rightKnob.position.set(w * 0.15, h * 0.5, d * 0.52);
+  group.add(rightKnob);
+}
+
+function createGenericTable(group: THREE.Group, w: number, d: number, h: number, color: string): void {
+  const topColor = createMaterial(color);
+  const legColor = createMaterial(color, 0.7, 0.1);
+  legColor.color.multiplyScalar(0.8);
+
+  const topGeo = new THREE.BoxGeometry(w, h * 0.1, d);
+  const topMesh = new THREE.Mesh(topGeo, topColor);
+  topMesh.position.set(0, h * 0.95, 0);
+  group.add(topMesh);
+
+  const legGeo = new THREE.BoxGeometry(w * 0.05, h * 0.9, d * 0.05);
+  const positions = [
+    [-w * 0.42, h * 0.45, -d * 0.42],
+    [w * 0.42, h * 0.45, -d * 0.42],
+    [-w * 0.42, h * 0.45, d * 0.42],
+    [w * 0.42, h * 0.45, d * 0.42]
   ];
   positions.forEach(pos => {
     const leg = new THREE.Mesh(legGeo, legColor);

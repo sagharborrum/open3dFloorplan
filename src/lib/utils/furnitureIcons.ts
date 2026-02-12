@@ -572,6 +572,96 @@ const drawRecessedLight: DrawFn = (ctx, w, d) => {
   ctx.stroke();
 };
 
+const drawOven: DrawFn = (ctx, w, d) => {
+  roundRect(ctx, -w/2, -d/2, w, d, 2);
+  ctx.fill(); ctx.stroke();
+  // Oven door window
+  ctx.fillStyle = '#00000020';
+  roundRect(ctx, -w*0.3, -d*0.2, w*0.6, d*0.5, 2);
+  ctx.fill(); ctx.stroke();
+  // Handle
+  ctx.beginPath();
+  ctx.moveTo(-w*0.25, -d*0.3);
+  ctx.lineTo(w*0.25, -d*0.3);
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+};
+
+const drawWasherDryer: DrawFn = (ctx, w, d) => {
+  roundRect(ctx, -w/2, -d/2, w, d, 2);
+  ctx.fill(); ctx.stroke();
+  // Drum circle
+  ctx.beginPath();
+  const r = Math.min(w, d) * 0.3;
+  ctx.arc(0, d*0.05, r, 0, Math.PI*2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(0, d*0.05, r*0.6, 0, Math.PI*2);
+  ctx.stroke();
+  // Control panel area
+  ctx.beginPath();
+  ctx.moveTo(-w*0.4, -d*0.3);
+  ctx.lineTo(w*0.4, -d*0.3);
+  ctx.stroke();
+};
+
+const drawFireplace: DrawFn = (ctx, w, d, color) => {
+  // Mantel/surround
+  roundRect(ctx, -w/2, -d/2, w, d, 3);
+  ctx.fill(); ctx.stroke();
+  // Firebox opening
+  ctx.fillStyle = '#1a1a1a40';
+  roundRect(ctx, -w*0.35, -d*0.1, w*0.7, d*0.5, 2);
+  ctx.fill(); ctx.stroke();
+  // Flame hint
+  ctx.fillStyle = '#f59e0b60';
+  ctx.beginPath();
+  ctx.moveTo(-w*0.1, d*0.3);
+  ctx.quadraticCurveTo(0, -d*0.05, w*0.1, d*0.3);
+  ctx.fill();
+};
+
+const drawTelevision: DrawFn = (ctx, w, d) => {
+  // Thin rectangle (flat panel)
+  roundRect(ctx, -w/2, -d/2, w, d, 1);
+  ctx.fill(); ctx.stroke();
+  // Screen
+  ctx.fillStyle = '#00000030';
+  roundRect(ctx, -w*0.45, -d*0.3, w*0.9, d*0.6, 1);
+  ctx.fill();
+  // Stand
+  ctx.beginPath();
+  ctx.moveTo(-w*0.15, d*0.4);
+  ctx.lineTo(w*0.15, d*0.4);
+  ctx.lineWidth = 2;
+  ctx.stroke();
+};
+
+const drawStorage: DrawFn = (ctx, w, d) => {
+  roundRect(ctx, -w/2, -d/2, w, d, 2);
+  ctx.fill(); ctx.stroke();
+  // Two doors
+  ctx.beginPath();
+  ctx.moveTo(0, -d/2 + 2);
+  ctx.lineTo(0, d/2 - 2);
+  ctx.stroke();
+  // Shelf line
+  ctx.beginPath();
+  ctx.moveTo(-w/2 + 2, 0);
+  ctx.lineTo(w/2 - 2, 0);
+  ctx.stroke();
+  // Knobs
+  ctx.beginPath();
+  ctx.arc(-w*0.1, -d*0.25, 1.5, 0, Math.PI*2);
+  ctx.arc(w*0.1, -d*0.25, 1.5, 0, Math.PI*2);
+  ctx.fill();
+};
+
+const drawGenericTable: DrawFn = (ctx, w, d) => {
+  roundRect(ctx, -w/2, -d/2, w, d, 3);
+  ctx.fill(); ctx.stroke();
+};
+
 /** Registry mapping catalogId → custom draw function */
 const iconDrawers: Record<string, DrawFn> = {
   sofa: drawSofa,
@@ -591,14 +681,20 @@ const iconDrawers: Record<string, DrawFn> = {
   sink_k: drawSink,
   counter: drawCounter,
   dishwasher: drawDishwasher,
+  oven: drawOven,
   toilet: drawToilet,
   bathtub: drawBathtub,
   shower: drawShower,
   sink_b: drawSink,
+  washer_dryer: drawWasherDryer,
   desk: drawDesk,
   office_chair: drawOfficeChair,
   dining_table: drawDiningTable,
   dining_chair: drawDiningChair,
+  fireplace: drawFireplace,
+  television: drawTelevision,
+  storage: drawStorage,
+  table: drawGenericTable,
   // Decor
   rug: drawRug,
   round_rug: drawRoundRug,
