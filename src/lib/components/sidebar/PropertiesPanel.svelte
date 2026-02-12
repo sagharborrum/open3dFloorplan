@@ -220,9 +220,8 @@
   let hasSelection = $derived(!!selectedWall || !!selectedDoor || !!selectedWindow || !!selectedFurniture || !!selectedRoom || !!selectedStair || !!selectedColumn || (!is3D && hasBgImage));
 </script>
 
-{#if !is3D || hasSelection}
-<div class="{is3D ? 'w-80' : 'w-64'} bg-white border-l border-gray-200 flex flex-col h-full overflow-y-auto p-3">
 {#if hasSelection}
+<div class="{is3D ? 'w-80' : 'w-64'} bg-white border-l border-gray-200 flex flex-col h-full overflow-y-auto p-3">
   {#if selectedWall}
     <h3 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
       <span class="w-6 h-6 bg-gray-200 rounded flex items-center justify-center text-xs">▭</span>
@@ -729,6 +728,5 @@
       </div>
     </div>
   {/if}
-{/if}
 </div>
 {/if}
