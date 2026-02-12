@@ -671,7 +671,11 @@
       });
       model.position.set(fi.position.x, 0, fi.position.y);
       model.rotation.y = -(fi.rotation * Math.PI) / 180;
-      if (fi.scale) model.scale.set(fi.scale.x, 1, fi.scale.y);
+      // Note: fi.scale is 2D editor scale — don't override 3D model scaling from scaleToFit
+      if (fi.scale && (fi.scale.x !== 1 || fi.scale.y !== 1)) {
+        model.scale.x *= fi.scale.x;
+        model.scale.z *= fi.scale.y;
+      }
       wallGroup.add(model);
     }
 

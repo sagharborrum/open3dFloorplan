@@ -135,14 +135,13 @@ function scaleToFit(model: THREE.Group, def: FurnitureDef, mapping: ModelMapping
 
   if (size.x === 0 || size.y === 0 || size.z === 0) return;
 
-  // Scale to match our catalog dimensions (in cm)
+  // Scale to match our catalog dimensions (in cm) — non-uniform to fill exact footprint
   // Our convention: width=X, height=Y, depth=Z
   const scaleX = def.width / size.x;
   const scaleY = def.height / size.y;
   const scaleZ = def.depth / size.z;
-  const uniformScale = Math.min(scaleX, scaleY, scaleZ);
 
-  model.scale.setScalar(uniformScale);
+  model.scale.set(scaleX, scaleY, scaleZ);
 
   // Re-center at origin after scaling
   const scaledBox = new THREE.Box3().setFromObject(model);
