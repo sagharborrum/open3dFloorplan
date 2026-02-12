@@ -2093,15 +2093,47 @@
         ctx.setLineDash([6, 4]);
         ctx.strokeRect(s1.x, s1.y, s2.x - s1.x, s2.y - s1.y);
         ctx.setLineDash([]);
-        // Move icon in center
-        const cx = (s1.x + s2.x) / 2, cy = (s1.y + s2.y) / 2;
-        ctx.fillStyle = 'rgba(139, 92, 246, 0.15)';
+        // Light fill
+        ctx.fillStyle = 'rgba(139, 92, 246, 0.08)';
         ctx.fillRect(s1.x, s1.y, s2.x - s1.x, s2.y - s1.y);
+
+        // Move icon in center — 4-arrow crosshair
+        const cx = (s1.x + s2.x) / 2, cy = (s1.y + s2.y) / 2;
+        const r = 18; // arm length
+        const ah = 6;  // arrowhead size
+        ctx.save();
+        // Background circle
+        ctx.beginPath();
+        ctx.arc(cx, cy, r + 8, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.fill();
+        ctx.strokeStyle = '#8b5cf6';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        // Draw 4 arrows
+        ctx.strokeStyle = '#8b5cf6';
         ctx.fillStyle = '#8b5cf6';
-        ctx.font = '16px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('⇔', cx, cy);
+        ctx.lineWidth = 2;
+        for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+          // Line
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.lineTo(cx + dx * r, cy + dy * r);
+          ctx.stroke();
+          // Arrowhead
+          ctx.beginPath();
+          ctx.moveTo(cx + dx * r, cy + dy * r);
+          if (dx !== 0) {
+            ctx.lineTo(cx + dx * (r - ah), cy - ah);
+            ctx.lineTo(cx + dx * (r - ah), cy + ah);
+          } else {
+            ctx.lineTo(cx - ah, cy + dy * (r - ah));
+            ctx.lineTo(cx + ah, cy + dy * (r - ah));
+          }
+          ctx.closePath();
+          ctx.fill();
+        }
+        ctx.restore();
       }
     }
 
