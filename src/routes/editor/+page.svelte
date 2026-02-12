@@ -64,7 +64,7 @@
       {#if mode === '2d'}
         <BuildPanel />
       {/if}
-      <div class="flex-1 relative">
+      <div class="flex-1 min-w-0 relative">
         {#if mode === '2d'}
           <FloorPlanCanvas />
         {:else}
