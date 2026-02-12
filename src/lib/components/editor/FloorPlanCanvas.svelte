@@ -106,7 +106,7 @@
 
   // Room drag state
   let draggingRoomId: string | null = $state(null);
-  let roomDragOffset: Point = { x: 0, y: 0 };
+  let roomDragStartMouse: Point = { x: 0, y: 0 };
   let roomDragStartPositions: Map<string, { start: Point; end: Point }> = new Map();
 
   // Wall endpoint drag state (includes all connected walls at the corner)
@@ -2658,8 +2658,7 @@
           selectedElementIds.set(new Set());
           // Start room drag
           draggingRoomId = room.id;
-          const centroid = roomCentroid(getRoomPolygon(room, currentFloor!.walls));
-          roomDragOffset = { x: wp.x - centroid.x, y: wp.y - centroid.y };
+          roomDragStartMouse = { x: wp.x, y: wp.y };
           roomDragStartPositions.clear();
           for (const wid of room.wallIds) {
             const w = currentFloor!.walls.find(wall => wall.id === wid);
@@ -2794,33 +2793,12 @@
         }
       }
     }
-    if (draggingRoomId && currentFloor) {
-      const dx = Math.round((mousePos.x - roomDragOffset.x) / SNAP) * SNAP;
-      const dy = Math.round((mousePos.y - roomDragOffset.y) / SNAP) * SNAP;
-      // Compute delta from original centroid
-      const room = detectedRooms.find(r => r.id === draggingRoomId);
-      if (room) {
-        const origPoly = getRoomPolygon(room, currentFloor.walls);
-        // Use first wall's original start as reference to compute delta
-        const firstWallId = room.wallIds[0];
-        const origPos = roomDragStartPositions.get(firstWallId);
-        if (origPos) {
-          const origCentroid = roomCentroid(
-            getRoomPolygon(room, 
-              currentFloor.walls.map(w => roomDragStartPositions.has(w.id) 
-                ? { ...w, start: roomDragStartPositions.get(w.id)!.start, end: roomDragStartPositions.get(w.id)!.end }
-                : w
-              )
-            )
-          );
-          const targetCentroid = { x: mousePos.x - roomDragOffset.x, y: mousePos.y - roomDragOffset.y };
-          const moveDx = snap(targetCentroid.x - origCentroid.x);
-          const moveDy = snap(targetCentroid.y - origCentroid.y);
-          for (const [wid, orig] of roomDragStartPositions) {
-            moveWallEndpoint(wid, 'start', { x: orig.start.x + moveDx, y: orig.start.y + moveDy });
-            moveWallEndpoint(wid, 'end', { x: orig.end.x + moveDx, y: orig.end.y + moveDy });
-          }
-        }
+    if (draggingRoomId && currentFloor && roomDragStartPositions.size > 0) {
+      const dx = Math.round((mousePos.x - roomDragStartMouse.x) / SNAP) * SNAP;
+      const dy = Math.round((mousePos.y - roomDragStartMouse.y) / SNAP) * SNAP;
+      for (const [wid, orig] of roomDragStartPositions) {
+        moveWallEndpoint(wid, 'start', { x: orig.start.x + dx, y: orig.start.y + dy });
+        moveWallEndpoint(wid, 'end', { x: orig.end.x + dx, y: orig.end.y + dy });
       }
     }
     if (draggingCurveHandle && currentFloor) {
