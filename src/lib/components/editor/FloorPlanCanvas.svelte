@@ -2456,6 +2456,24 @@
         }
       }
     } else if (tool === 'select') {
+      // Multi-select bounding box drag — check FIRST before individual elements
+      if (currentSelectedIds.size >= 2 && currentFloor) {
+        const bbox = getMultiSelectBBox();
+        if (bbox && wp.x >= bbox.minX && wp.x <= bbox.maxX && wp.y >= bbox.minY && wp.y <= bbox.maxY) {
+          const origPositions = new Map<string, { start?: Point; end?: Point; position?: Point }>();
+          for (const id of currentSelectedIds) {
+            const w = currentFloor.walls.find(w => w.id === id);
+            if (w) { origPositions.set(id, { start: { ...w.start }, end: { ...w.end } }); continue; }
+            const fi = currentFloor.furniture.find(f => f.id === id);
+            if (fi) { origPositions.set(id, { position: { ...fi.position } }); continue; }
+            if (currentFloor.stairs) { const st = currentFloor.stairs.find(s => s.id === id); if (st) { origPositions.set(id, { position: { ...st.position } }); continue; } }
+            if (currentFloor.columns) { const col = currentFloor.columns.find(c => c.id === id); if (col) { origPositions.set(id, { position: { ...col.position } }); continue; } }
+          }
+          draggingMultiSelect = { startMousePos: { ...wp }, origPositions };
+          commitFurnitureMove();
+          return;
+        }
+      }
       // Check wall endpoint handles first (drag-to-resize walls)
       if (currentSelectedId && currentFloor) {
         const selWall = currentFloor.walls.find(w => w.id === currentSelectedId);
@@ -2585,25 +2603,6 @@
           selectedElementId.set(null);
           selectedElementIds.set(new Set());
         } else {
-          // Check if clicking inside multi-select bounding box to drag
-          const bbox = getMultiSelectBBox();
-          if (bbox && wp.x >= bbox.minX && wp.x <= bbox.maxX && wp.y >= bbox.minY && wp.y <= bbox.maxY) {
-            // Start multi-select drag
-            const origPositions = new Map<string, { start?: Point; end?: Point; position?: Point }>();
-            if (currentFloor) {
-              for (const id of currentSelectedIds) {
-                const wall = currentFloor.walls.find(w => w.id === id);
-                if (wall) { origPositions.set(id, { start: { ...wall.start }, end: { ...wall.end } }); continue; }
-                const fi = currentFloor.furniture.find(f => f.id === id);
-                if (fi) { origPositions.set(id, { position: { ...fi.position } }); continue; }
-                if (currentFloor.stairs) { const st = currentFloor.stairs.find(s => s.id === id); if (st) { origPositions.set(id, { position: { ...st.position } }); continue; } }
-                if (currentFloor.columns) { const col = currentFloor.columns.find(c => c.id === id); if (col) { origPositions.set(id, { position: { ...col.position } }); continue; } }
-              }
-            }
-            draggingMultiSelect = { startMousePos: { ...wp }, origPositions };
-            commitFurnitureMove();
-            return;
-          }
           // Empty space — start marquee selection
           marqueeStart = { ...wp };
           marqueeEnd = { ...wp };
