@@ -35,7 +35,7 @@ const MODEL_MAP: Record<string, ModelMapping> = {
   fireplace:      { file: 'toaster', scale: 100 }, // placeholder
   television:     { file: 'televisionModern', scale: 100 },
   storage:        { file: 'bookcaseClosed', scale: 100 },
-  table:          { file: 'table', scale: 100 },
+  table:          { file: 'tableCross', scale: 100 },
 
   // Bedroom
   bed_queen:      { file: 'bedDouble', scale: 110 },
@@ -60,11 +60,11 @@ const MODEL_MAP: Record<string, ModelMapping> = {
   washer_dryer:   { file: 'washerDryerStacked', scale: 100 },
 
   // Office
-  desk:           { file: 'table', scale: 110 },
+  desk:           { file: 'tableCross', scale: 110 },
   office_chair:   { file: 'chairDesk', scale: 90 },
 
   // Dining
-  dining_table:   { file: 'tableRound', scale: 100 },
+  dining_table:   { file: 'tableCross', scale: 100 },
   dining_chair:   { file: 'chair', scale: 90 },
 
   // Decor
