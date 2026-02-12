@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { currentProject, viewMode, createDefaultProject } from '$lib/stores/project';
+  import { currentProject, viewMode, selectedElementId, selectedRoomId, createDefaultProject } from '$lib/stores/project';
   import { localStore } from '$lib/services/datastore';
   import TopBar from '$lib/components/toolbar/TopBar.svelte';
   import BuildPanel from '$lib/components/sidebar/BuildPanel.svelte';
@@ -12,7 +12,14 @@
   let ready = $state(false);
   let showHelp = $state(false);
 
-  viewMode.subscribe((m) => { mode = m; });
+  viewMode.subscribe((m) => {
+    mode = m;
+    if (m === '3d') {
+      // Clear selection when entering 3D — start in view-only mode
+      selectedElementId.set(null);
+      selectedRoomId.set(null);
+    }
+  });
 
   onMount(async () => {
     const url = new URL(window.location.href);
