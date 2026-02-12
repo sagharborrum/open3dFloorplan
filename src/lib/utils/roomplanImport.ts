@@ -157,7 +157,7 @@ function straightenWalls(walls: Wall[], angleTolerance = 5, mergeDistance = 15):
 
     // Check if near 0°, 90°, 180°, 270°
     const snappedAngle = [0, Math.PI / 2, Math.PI, -Math.PI / 2, -Math.PI].find(
-      a => Math.abs(((angle - a + Math.PI * 3) % (Math.PI * 2)) - Math.PI) < tolRad
+      a => angleDiff(angle, a) < tolRad
     );
 
     if (snappedAngle !== undefined) {
@@ -178,6 +178,19 @@ function straightenWalls(walls: Wall[], angleTolerance = 5, mergeDistance = 15):
   mergeEndpoints(walls, mergeDistance);
 }
 
+/** Normalize angle to [-π, π) */
+function normalizeAngle(a: number): number {
+  a = a % (Math.PI * 2);
+  if (a > Math.PI) a -= Math.PI * 2;
+  if (a <= -Math.PI) a += Math.PI * 2;
+  return a;
+}
+
+/** Smallest absolute angular difference */
+function angleDiff(a: number, b: number): number {
+  return Math.abs(normalizeAngle(a - b));
+}
+
 /**
  * Enforce orthogonal: find the dominant wall direction, then snap
  * every wall to be parallel or perpendicular to it.
@@ -185,35 +198,23 @@ function straightenWalls(walls: Wall[], angleTolerance = 5, mergeDistance = 15):
 function enforceOrthogonal(walls: Wall[], mergeDistance = 15): void {
   if (walls.length === 0) return;
 
-  // Find dominant angle: weighted by wall length
-  // Build histogram of angles (mod 90°) weighted by length
-  const angles: { angle: number; weight: number }[] = [];
+  // Find dominant orientation (mod π/2) weighted by wall length.
+  // Map each wall angle to [0, π/2) then do weighted circular mean on that range.
+  let sinSum = 0, cosSum = 0;
   for (const wall of walls) {
     const dx = wall.end.x - wall.start.x;
     const dy = wall.end.y - wall.start.y;
     const len = Math.hypot(dx, dy);
     if (len < 1) continue;
-    // Normalize angle to [0, 90°) since we only care about orientation mod 90
-    let angle = Math.atan2(dy, dx);
-    angle = ((angle % (Math.PI / 2)) + Math.PI / 2) % (Math.PI / 2);
-    angles.push({ angle, weight: len });
+    const angle = Math.atan2(dy, dx);
+    // Multiply by 4 to map π/2 period → full circle for circular mean
+    sinSum += Math.sin(angle * 4) * len;
+    cosSum += Math.cos(angle * 4) * len;
   }
 
-  if (angles.length === 0) return;
-
-  // Weighted circular mean in [0, π/2)
-  let sinSum = 0, cosSum = 0;
-  for (const { angle, weight } of angles) {
-    // Double the angle to handle the π/2 wraparound
-    sinSum += Math.sin(angle * 4) * weight;
-    cosSum += Math.cos(angle * 4) * weight;
-  }
   const dominantAngle = Math.atan2(sinSum, cosSum) / 4;
 
-  // The 4 allowed angles: dominant, dominant+90, dominant+180, dominant+270
-  const allowed = [0, 1, 2, 3].map(i => dominantAngle + i * Math.PI / 2);
-
-  // Snap each wall to the nearest allowed angle
+  // Snap each wall to nearest of: dominant, dominant+90°, dominant+180°, dominant-90°
   for (const wall of walls) {
     const dx = wall.end.x - wall.start.x;
     const dy = wall.end.y - wall.start.y;
@@ -223,11 +224,12 @@ function enforceOrthogonal(walls: Wall[], mergeDistance = 15): void {
     const currentAngle = Math.atan2(dy, dx);
 
     // Find nearest allowed angle
-    let bestAngle = allowed[0];
+    let bestAngle = dominantAngle;
     let bestDiff = Infinity;
-    for (const a of allowed) {
-      let diff = Math.abs(((currentAngle - a + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
-      if (diff < bestDiff) { bestDiff = diff; bestAngle = a; }
+    for (let i = 0; i < 4; i++) {
+      const candidate = dominantAngle + i * Math.PI / 2;
+      const diff = angleDiff(currentAngle, candidate);
+      if (diff < bestDiff) { bestDiff = diff; bestAngle = candidate; }
     }
 
     // Recalculate endpoints from midpoint + snapped angle
