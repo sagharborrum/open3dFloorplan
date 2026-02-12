@@ -63,18 +63,18 @@
       <!-- Tabs -->
       <div class="flex border-b border-gray-200 px-5">
         <button
-          class="px-4 py-2 text-sm font-medium transition-colors relative {activeTab === 'project' ? 'text-emerald-600' : 'text-gray-500 hover:text-gray-700'}"
+          class="px-4 py-2 text-sm font-medium transition-colors relative {activeTab === 'project' ? 'text-slate-800' : 'text-gray-500 hover:text-gray-700'}"
           onclick={() => activeTab = 'project'}
         >
           Project
-          {#if activeTab === 'project'}<div class="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-500 rounded-t"></div>{/if}
+          {#if activeTab === 'project'}<div class="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-700 rounded-t"></div>{/if}
         </button>
         <button
-          class="px-4 py-2 text-sm font-medium transition-colors relative {activeTab === 'dimensions' ? 'text-emerald-600' : 'text-gray-500 hover:text-gray-700'}"
+          class="px-4 py-2 text-sm font-medium transition-colors relative {activeTab === 'dimensions' ? 'text-slate-800' : 'text-gray-500 hover:text-gray-700'}"
           onclick={() => activeTab = 'dimensions'}
         >
           Dimensions
-          {#if activeTab === 'dimensions'}<div class="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-500 rounded-t"></div>{/if}
+          {#if activeTab === 'dimensions'}<div class="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-700 rounded-t"></div>{/if}
         </button>
       </div>
 
@@ -88,7 +88,7 @@
                 type="text"
                 value={projectName}
                 oninput={onNameChange}
-                class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-500 focus:border-slate-500 outline-none"
                 placeholder="Untitled Project"
               />
             </label>
@@ -98,7 +98,7 @@
                 value={projectDescription}
                 oninput={onDescriptionChange}
                 rows="3"
-                class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none resize-none"
+                class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-500 focus:border-slate-500 outline-none resize-none"
                 placeholder="Add a description for this project..."
               ></textarea>
             </label>
@@ -110,11 +110,11 @@
             <span class="text-sm font-medium text-gray-700">Metrics unit</span>
             <div class="flex rounded-lg border border-gray-300 overflow-hidden">
               <button
-                class="px-3 py-1.5 text-sm font-medium transition-colors {settings.units === 'metric' ? 'bg-emerald-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}"
+                class="px-3 py-1.5 text-sm font-medium transition-colors {settings.units === 'metric' ? 'bg-slate-700 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}"
                 onclick={() => updateSetting('units', 'metric')}
               >m, cm</button>
               <button
-                class="px-3 py-1.5 text-sm font-medium transition-colors {settings.units === 'imperial' ? 'bg-emerald-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}"
+                class="px-3 py-1.5 text-sm font-medium transition-colors {settings.units === 'imperial' ? 'bg-slate-700 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}"
                 onclick={() => updateSetting('units', 'imperial')}
               >ft, inch</button>
             </div>
@@ -128,7 +128,7 @@
                 type="checkbox"
                 checked={settings.showDimensions}
                 onchange={(e) => updateSetting('showDimensions', (e.target as HTMLInputElement).checked)}
-                class="w-10 h-5 rounded-full appearance-none cursor-pointer bg-gray-300 checked:bg-emerald-500 relative transition-colors
+                class="w-10 h-5 rounded-full appearance-none cursor-pointer bg-gray-300 checked:bg-slate-700 relative transition-colors
                   before:content-[''] before:absolute before:w-4 before:h-4 before:rounded-full before:bg-white before:top-0.5 before:left-0.5 before:transition-transform checked:before:translate-x-5"
               />
             </label>
@@ -138,7 +138,7 @@
                 type="checkbox"
                 checked={settings.showExternalDimensions}
                 onchange={(e) => updateSetting('showExternalDimensions', (e.target as HTMLInputElement).checked)}
-                class="w-10 h-5 rounded-full appearance-none cursor-pointer bg-gray-300 checked:bg-emerald-500 relative transition-colors
+                class="w-10 h-5 rounded-full appearance-none cursor-pointer bg-gray-300 checked:bg-slate-700 relative transition-colors
                   before:content-[''] before:absolute before:w-4 before:h-4 before:rounded-full before:bg-white before:top-0.5 before:left-0.5 before:transition-transform checked:before:translate-x-5"
               />
             </label>
@@ -148,7 +148,7 @@
                 type="checkbox"
                 checked={settings.showInternalDimensions}
                 onchange={(e) => updateSetting('showInternalDimensions', (e.target as HTMLInputElement).checked)}
-                class="w-10 h-5 rounded-full appearance-none cursor-pointer bg-gray-300 checked:bg-emerald-500 relative transition-colors
+                class="w-10 h-5 rounded-full appearance-none cursor-pointer bg-gray-300 checked:bg-slate-700 relative transition-colors
                   before:content-[''] before:absolute before:w-4 before:h-4 before:rounded-full before:bg-white before:top-0.5 before:left-0.5 before:transition-transform checked:before:translate-x-5"
               />
             </label>
@@ -158,7 +158,7 @@
                 type="checkbox"
                 checked={settings.showExtensionLines}
                 onchange={(e) => updateSetting('showExtensionLines', (e.target as HTMLInputElement).checked)}
-                class="w-10 h-5 rounded-full appearance-none cursor-pointer bg-gray-300 checked:bg-emerald-500 relative transition-colors
+                class="w-10 h-5 rounded-full appearance-none cursor-pointer bg-gray-300 checked:bg-slate-700 relative transition-colors
                   before:content-[''] before:absolute before:w-4 before:h-4 before:rounded-full before:bg-white before:top-0.5 before:left-0.5 before:transition-transform checked:before:translate-x-5"
               />
             </label>
@@ -168,7 +168,7 @@
                 type="checkbox"
                 checked={settings.showObjectDistance}
                 onchange={(e) => updateSetting('showObjectDistance', (e.target as HTMLInputElement).checked)}
-                class="w-10 h-5 rounded-full appearance-none cursor-pointer bg-gray-300 checked:bg-emerald-500 relative transition-colors
+                class="w-10 h-5 rounded-full appearance-none cursor-pointer bg-gray-300 checked:bg-slate-700 relative transition-colors
                   before:content-[''] before:absolute before:w-4 before:h-4 before:rounded-full before:bg-white before:top-0.5 before:left-0.5 before:transition-transform checked:before:translate-x-5"
               />
             </label>
@@ -176,13 +176,13 @@
               <span class="text-sm text-gray-700">Line Color</span>
               <div class="flex items-center gap-2">
                 <button
-                  class="w-8 h-8 rounded border-2 transition-colors {settings.dimensionLineColor === '#ffffff' ? 'border-emerald-500' : 'border-gray-200'}"
+                  class="w-8 h-8 rounded border-2 transition-colors {settings.dimensionLineColor === '#ffffff' ? 'border-slate-600' : 'border-gray-200'}"
                   style="background-color: #ffffff"
                   onclick={() => updateSetting('dimensionLineColor', '#ffffff')}
                 ></button>
                 <span class="text-gray-300">|</span>
                 <button
-                  class="w-8 h-8 rounded border-2 transition-colors {settings.dimensionLineColor === '#1e293b' ? 'border-emerald-500' : 'border-gray-200'}"
+                  class="w-8 h-8 rounded border-2 transition-colors {settings.dimensionLineColor === '#1e293b' ? 'border-slate-600' : 'border-gray-200'}"
                   style="background-color: #1e293b"
                   onclick={() => updateSetting('dimensionLineColor', '#1e293b')}
                 ></button>
