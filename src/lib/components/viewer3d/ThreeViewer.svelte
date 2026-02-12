@@ -30,6 +30,9 @@
   let selectedWallId3D: string | null = null;
   const originalEmissive = new Map<THREE.Object3D, THREE.Color>();
 
+  // 3D Edit mode — enables click-to-select
+  let editMode = $state(false);
+
   // Walkthrough mode
   let walkthroughMode = $state(false);
   let moveForward = false;
@@ -133,7 +136,8 @@
       pointerDownPos = { x: e.clientX, y: e.clientY };
     });
     renderer.domElement.addEventListener('pointerup', (e) => {
-      // Only treat as click if mouse didn't move much (not a drag/orbit)
+      // Only select in edit mode, and only if mouse didn't move much (not a drag/orbit)
+      if (!editMode) return;
       const dx = e.clientX - pointerDownPos.x;
       const dy = e.clientY - pointerDownPos.y;
       if (Math.hypot(dx, dy) > 5) return;
@@ -153,6 +157,29 @@
         }
       }
       selectedElementId.set(hitWallId);
+    });
+
+    // Hover highlight in edit mode
+    let hoveredMesh: THREE.Mesh | null = null;
+    renderer.domElement.addEventListener('mousemove', (e) => {
+      if (!editMode) {
+        if (hoveredMesh) { hoveredMesh = null; renderer.domElement.style.cursor = ''; }
+        return;
+      }
+      renderer.domElement.style.cursor = 'pointer';
+      const rect = renderer.domElement.getBoundingClientRect();
+      mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObjects(wallGroup.children, false);
+      const hit = intersects.find(i => i.object.userData.wallId);
+      if (hit && hit.object !== hoveredMesh) {
+        hoveredMesh = hit.object as THREE.Mesh;
+        renderer.domElement.style.cursor = 'pointer';
+      } else if (!hit) {
+        hoveredMesh = null;
+        renderer.domElement.style.cursor = editMode ? 'crosshair' : '';
+      }
     });
 
     // Initialize PointerLock controls for walkthrough mode
@@ -817,6 +844,12 @@
   }
 
   function onKeyDown(event: KeyboardEvent) {
+    // ESC exits edit mode
+    if (event.code === 'Escape' && editMode && !walkthroughMode) {
+      editMode = false;
+      selectedElementId.set(null);
+      return;
+    }
     if (!walkthroughMode) return;
     
     switch (event.code) {
@@ -1035,6 +1068,18 @@
 </script>
 
 <div bind:this={container} class="w-full h-full relative">
+  <!-- Edit Mode Toggle -->
+  <button
+    onclick={() => { editMode = !editMode; if (editMode && walkthroughMode) { exitWalkthroughMode(); } if (!editMode) selectedElementId.set(null); }}
+    class="absolute top-4 right-28 z-10 p-2 rounded-lg transition-colors {editMode ? 'bg-blue-600 text-white ring-2 ring-blue-300' : 'bg-black/70 text-white hover:bg-black/80'}"
+    title={editMode ? 'Exit Edit Mode' : 'Edit Mode — click to select walls & change materials'}
+  >
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+    </svg>
+  </button>
+
   <!-- 3D Screenshot Button -->
   <button
     onclick={takeScreenshot}
@@ -1114,6 +1159,18 @@
     <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10">
       <div class="bg-black/70 text-white text-sm px-4 py-2 rounded-lg backdrop-blur-sm">
         WASD to look • Arrows to move • Mouse to look • Shift to sprint • ESC to exit
+      </div>
+    </div>
+  {/if}
+
+  {#if editMode && !walkthroughMode}
+    <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10">
+      <div class="bg-blue-600/90 text-white text-sm px-4 py-2 rounded-lg backdrop-blur-sm flex items-center gap-2">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+        Edit Mode — Click walls to select & change materials • ESC to exit
       </div>
     </div>
   {/if}
