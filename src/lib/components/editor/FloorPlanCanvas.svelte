@@ -9,6 +9,8 @@
   import { drawFurnitureIcon } from '$lib/utils/furnitureIcons';
   import { handleGlobalShortcut } from '$lib/utils/shortcuts';
   import { getWallTextureCanvas, getFloorTextureCanvas, setTextureLoadCallback } from '$lib/utils/textureGenerator';
+  import { projectSettings, formatLength } from '$lib/stores/settings';
+  import type { ProjectSettings } from '$lib/stores/settings';
 
   let canvas: HTMLCanvasElement;
   let ctx: CanvasRenderingContext2D;
@@ -58,6 +60,15 @@
   let showWindows = $state(true);
   let showRoomLabels = $state(true);
   let showDimensions = $state(true);
+  let dimSettings: ProjectSettings = $state({
+    units: 'metric', showDimensions: true, showExternalDimensions: true,
+    showInternalDimensions: false, showExtensionLines: true,
+    showObjectDistance: true, dimensionLineColor: '#1e293b',
+  });
+  projectSettings.subscribe((s) => {
+    dimSettings = s;
+    showDimensions = s.showDimensions;
+  });
   let showStairs = $state(true);
   let showLayerPanel = $state(false);
   const RULER_SIZE = 24;
@@ -422,7 +433,7 @@
       x: (dcScreen.x + wallStartScreen.x) / 2,
       y: (dcScreen.y + wallStartScreen.y) / 2
     };
-    const labelTextA = `${(distFromA / 100).toFixed(2)} m`;
+    const labelTextA = `${formatLength(distFromA, dimSettings.units)}`;
     const textWidthA = ctx.measureText(labelTextA).width;
     const pillWidthA = textWidthA + 12;
     const pillHeightA = fontSize + 6;
@@ -442,7 +453,7 @@
       x: (dcScreen.x + wallEndScreen.x) / 2,
       y: (dcScreen.y + wallEndScreen.y) / 2
     };
-    const labelTextB = `${(distFromB / 100).toFixed(2)} m`;
+    const labelTextB = `${formatLength(distFromB, dimSettings.units)}`;
     const textWidthB = ctx.measureText(labelTextB).width;
     const pillWidthB = textWidthB + 12;
     const pillHeightB = fontSize + 6;
@@ -503,7 +514,7 @@
       x: (wcScreen.x + wallStartScreen.x) / 2,
       y: (wcScreen.y + wallStartScreen.y) / 2
     };
-    const labelTextA = `${(distFromA / 100).toFixed(2)} m`;
+    const labelTextA = `${formatLength(distFromA, dimSettings.units)}`;
     const textWidthA = ctx.measureText(labelTextA).width;
     const pillWidthA = textWidthA + 12;
     const pillHeightA = fontSize + 6;
@@ -523,7 +534,7 @@
       x: (wcScreen.x + wallEndScreen.x) / 2,
       y: (wcScreen.y + wallEndScreen.y) / 2
     };
-    const labelTextB = `${(distFromB / 100).toFixed(2)} m`;
+    const labelTextB = `${formatLength(distFromB, dimSettings.units)}`;
     const textWidthB = ctx.measureText(labelTextB).width;
     const pillWidthB = textWidthB + 12;
     const pillHeightB = fontSize + 6;
@@ -589,7 +600,7 @@
         ctx.font = `${fontSize}px sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(`${(wlen / 100).toFixed(2)} m`, midS.x - midTan.y * offsetDist, midS.y + midTan.x * offsetDist);
+        ctx.fillText(formatLength(wlen, dimSettings.units), midS.x - midTan.y * offsetDist, midS.y + midTan.x * offsetDist);
       }
 
       // Curve handle (midpoint) and endpoint handles when selected
@@ -704,15 +715,17 @@
     const dOffY = nny * offsetDist * dimSide;
 
     // Extension lines (from wall endpoints to dimension line)
-    const extLen = offsetDist + 4;
-    ctx.strokeStyle = '#9ca3af';
-    ctx.lineWidth = 0.5;
-    ctx.beginPath();
-    ctx.moveTo(s.x + nnx * (thickness / 2 + 2) * dimSide, s.y + nny * (thickness / 2 + 2) * dimSide);
-    ctx.lineTo(s.x + nnx * extLen * dimSide, s.y + nny * extLen * dimSide);
-    ctx.moveTo(e.x + nnx * (thickness / 2 + 2) * dimSide, e.y + nny * (thickness / 2 + 2) * dimSide);
-    ctx.lineTo(e.x + nnx * extLen * dimSide, e.y + nny * extLen * dimSide);
-    ctx.stroke();
+    if (dimSettings.showExtensionLines) {
+      const extLen = offsetDist + 4;
+      ctx.strokeStyle = dimSettings.dimensionLineColor === '#ffffff' ? '#d1d5db' : '#9ca3af';
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(s.x + nnx * (thickness / 2 + 2) * dimSide, s.y + nny * (thickness / 2 + 2) * dimSide);
+      ctx.lineTo(s.x + nnx * extLen * dimSide, s.y + nny * extLen * dimSide);
+      ctx.moveTo(e.x + nnx * (thickness / 2 + 2) * dimSide, e.y + nny * (thickness / 2 + 2) * dimSide);
+      ctx.lineTo(e.x + nnx * extLen * dimSide, e.y + nny * extLen * dimSide);
+      ctx.stroke();
+    }
 
     // Dimension line
     const ds = { x: s.x + dOffX, y: s.y + dOffY };
@@ -720,12 +733,12 @@
     const dimMx = (ds.x + de.x) / 2;
     const dimMy = (ds.y + de.y) / 2;
 
-    ctx.fillStyle = '#374151';
+    ctx.fillStyle = dimSettings.dimensionLineColor;
     const fontSize = Math.max(10, 11 * zoom);
     ctx.font = `${fontSize}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    const dimLabel = `${(wlen / 100).toFixed(2)} m`;
+    const dimLabel = formatLength(wlen, dimSettings.units);
     const textW = ctx.measureText(dimLabel).width;
 
     // Draw dimension line with gap for text
@@ -1554,7 +1567,7 @@
           const dimFontSize = Math.max(9, 10 * zoom);
           ctx.fillStyle = '#b0b8c4';
           ctx.font = `${dimFontSize}px sans-serif`;
-          ctx.fillText(`${roomW.toFixed(2)} × ${roomD.toFixed(2)} m`, sc.x, sc.y + fontSize + 2);
+          ctx.fillText(`${formatLength(roomW * 100, dimSettings.units)} × ${formatLength(roomD * 100, dimSettings.units)}`, sc.x, sc.y + fontSize + 2);
         }
       }
     }

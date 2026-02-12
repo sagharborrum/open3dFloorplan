@@ -1,0 +1,116 @@
+import { writable } from 'svelte/store';
+
+export interface ProjectSettings {
+  units: 'metric' | 'imperial';         // m,cm vs ft,inch
+  showDimensions: boolean;               // wall length labels
+  showExternalDimensions: boolean;       // outside-wall dimensions
+  showInternalDimensions: boolean;       // inside-room dimensions
+  showExtensionLines: boolean;           // perpendicular tick marks on dimension lines
+  showObjectDistance: boolean;            // distance from objects to walls
+  dimensionLineColor: string;            // color for dimension lines/text
+}
+
+const defaultSettings: ProjectSettings = {
+  units: 'metric',
+  showDimensions: true,
+  showExternalDimensions: true,
+  showInternalDimensions: false,
+  showExtensionLines: true,
+  showObjectDistance: true,
+  dimensionLineColor: '#1e293b',
+};
+
+// Load from localStorage if available
+function loadSettings(): ProjectSettings {
+  if (typeof window === 'undefined') return { ...defaultSettings };
+  try {
+    const saved = localStorage.getItem('o3d_settings');
+    if (saved) return { ...defaultSettings, ...JSON.parse(saved) };
+  } catch {}
+  return { ...defaultSettings };
+}
+
+function createSettingsStore() {
+  const { subscribe, set, update } = writable<ProjectSettings>(loadSettings());
+
+  return {
+    subscribe,
+    set(value: ProjectSettings) {
+      set(value);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('o3d_settings', JSON.stringify(value));
+      }
+    },
+    update(fn: (s: ProjectSettings) => ProjectSettings) {
+      update((current) => {
+        const next = fn(current);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('o3d_settings', JSON.stringify(next));
+        }
+        return next;
+      });
+    },
+    reset() {
+      this.set({ ...defaultSettings });
+    },
+  };
+}
+
+export const projectSettings = createSettingsStore();
+
+/** Convert cm to display string based on current units */
+export function formatLength(cm: number, units: 'metric' | 'imperial'): string {
+  if (units === 'imperial') {
+    const totalInches = cm / 2.54;
+    const feet = Math.floor(totalInches / 12);
+    const inches = Math.round(totalInches % 12);
+    if (feet === 0) return `${inches}"`;
+    if (inches === 0) return `${feet}'`;
+    return `${feet}'${inches}"`;
+  }
+  // Metric
+  if (cm >= 100) {
+    const m = cm / 100;
+    return m % 1 === 0 ? `${m} m` : `${m.toFixed(2)} m`;
+  }
+  return `${Math.round(cm)} cm`;
+}
+
+/** Convert cm to display with full precision */
+export function formatLengthPrecise(cm: number, units: 'metric' | 'imperial'): string {
+  if (units === 'imperial') {
+    const totalInches = cm / 2.54;
+    const feet = Math.floor(totalInches / 12);
+    const inches = totalInches % 12;
+    if (feet === 0) return `${inches.toFixed(1)}"`;
+    return `${feet}'${inches.toFixed(1)}"`;
+  }
+  if (cm >= 100) {
+    return `${(cm / 100).toFixed(2)} m`;
+  }
+  return `${cm.toFixed(1)} cm`;
+}
+
+/** Parse user input back to cm */
+export function parseLengthInput(input: string, units: 'metric' | 'imperial'): number | null {
+  if (units === 'imperial') {
+    // Try ft'in" format
+    const match = input.match(/^(\d+(?:\.\d+)?)'?\s*(\d+(?:\.\d+)?)?"?$/);
+    if (match) {
+      const feet = parseFloat(match[1]) || 0;
+      const inches = parseFloat(match[2]) || 0;
+      return (feet * 12 + inches) * 2.54;
+    }
+    // Try just inches
+    const inMatch = input.match(/^(\d+(?:\.\d+)?)"?$/);
+    if (inMatch) return parseFloat(inMatch[1]) * 2.54;
+    // Try just feet
+    const ftMatch = input.match(/^(\d+(?:\.\d+)?)'$/);
+    if (ftMatch) return parseFloat(ftMatch[1]) * 12 * 2.54;
+  }
+  // Metric — try m then cm
+  const mMatch = input.match(/^(\d+(?:\.\d+)?)\s*m$/);
+  if (mMatch) return parseFloat(mMatch[1]) * 100;
+  const num = parseFloat(input);
+  return isNaN(num) ? null : num;
+}
