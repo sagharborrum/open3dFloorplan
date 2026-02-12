@@ -27,6 +27,7 @@
 	"dependencies": {
 		"@sveltejs/adapter-vercel": "^6.3.1",
 		"dxf-writer": "^1.18.4",
-		"jspdf": "^4.1.0"
+		"jspdf": "^4.1.0",
+		"jszip": "^3.10.1"
 	}
 }
