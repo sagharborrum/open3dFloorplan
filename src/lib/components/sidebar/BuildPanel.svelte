@@ -12,7 +12,14 @@
   let activeTab = $state<'draw' | 'rooms' | 'objects'>('draw');
   let constructionOpen = $state(true);
   let selectedCategory = $state<string>('All');
-  let straightenWalls = $state(true);
+
+  // RoomPlan import dialog state
+  let showImportDialog = $state(false);
+  let importFileName = $state('');
+  let importJsonData: any = $state(null);
+  let optStraighten = $state(true);
+  let optOrthogonal = $state(true);
+  let optMergeDistance = $state(15);
 
   function setTool(tool: Tool) {
     selectedTool.set(tool);
@@ -140,21 +147,43 @@
           const text = await file.text();
           jsonData = JSON.parse(text);
         }
-        const floor = importRoomPlan(jsonData, { straighten: straightenWalls });
-        const project: Project = {
-          id: Math.random().toString(36).slice(2, 10),
-          name: file.name.replace(/\.(json|zip)$/, ''),
-          floors: [floor],
-          activeFloorId: floor.id,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
-        loadProject(project);
+        importJsonData = jsonData;
+        importFileName = file.name.replace(/\.(json|zip)$/, '');
+        showImportDialog = true;
       } catch (e: any) {
-        alert('Failed to import RoomPlan: ' + e.message);
+        alert('Failed to read RoomPlan file: ' + e.message);
       }
     };
     input.click();
+  }
+
+  function confirmImport() {
+    if (!importJsonData) return;
+    try {
+      const floor = importRoomPlan(importJsonData, {
+        straighten: optStraighten,
+        orthogonal: optOrthogonal,
+        mergeDistance: optMergeDistance,
+      });
+      const project: Project = {
+        id: Math.random().toString(36).slice(2, 10),
+        name: importFileName,
+        floors: [floor],
+        activeFloorId: floor.id,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      loadProject(project);
+    } catch (e: any) {
+      alert('Failed to import RoomPlan: ' + e.message);
+    }
+    showImportDialog = false;
+    importJsonData = null;
+  }
+
+  function cancelImport() {
+    showImportDialog = false;
+    importJsonData = null;
   }
 
   const categoryColors: Record<string, string> = {
@@ -279,10 +308,6 @@
             <div class="text-xs text-gray-400">iOS LiDAR scan (.json/.zip)</div>
           </div>
         </button>
-        <label class="flex items-center gap-2 px-3 py-1 text-xs text-gray-500 cursor-pointer hover:bg-gray-50 rounded" onclick={(e) => e.stopPropagation()}>
-          <input type="checkbox" bind:checked={straightenWalls} class="accent-blue-500" />
-          <span>Straighten walls on import</span>
-        </label>
 
         <button
           class="w-full flex items-center justify-between px-1 py-2 mt-3"
@@ -383,3 +408,41 @@
     {/if}
   </div>
 </div>
+
+<!-- RoomPlan Import Options Dialog -->
+{#if showImportDialog}
+  <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onclick={cancelImport}>
+    <div class="bg-white rounded-xl shadow-2xl w-80 p-5" onclick={(e) => e.stopPropagation()}>
+      <h3 class="text-sm font-bold text-gray-800 mb-1">Import RoomPlan</h3>
+      <p class="text-xs text-gray-400 mb-4">{importFileName}</p>
+
+      <div class="space-y-3">
+        <label class="flex items-start gap-2.5 cursor-pointer">
+          <input type="checkbox" bind:checked={optStraighten} class="accent-blue-500 mt-0.5" />
+          <div>
+            <div class="text-sm font-medium text-gray-700">Straighten walls</div>
+            <div class="text-xs text-gray-400">Snap near-horizontal/vertical walls to axis</div>
+          </div>
+        </label>
+
+        <label class="flex items-start gap-2.5 cursor-pointer">
+          <input type="checkbox" bind:checked={optOrthogonal} class="accent-blue-500 mt-0.5" />
+          <div>
+            <div class="text-sm font-medium text-gray-700">Enforce orthogonal</div>
+            <div class="text-xs text-gray-400">Force all walls to 90°/180° angles</div>
+          </div>
+        </label>
+
+        <label class="block">
+          <div class="text-xs text-gray-500 mb-1">Corner merge distance (cm)</div>
+          <input type="number" bind:value={optMergeDistance} min="0" max="50" step="5" class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
+        </label>
+      </div>
+
+      <div class="flex gap-2 mt-5">
+        <button onclick={cancelImport} class="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors">Cancel</button>
+        <button onclick={confirmImport} class="flex-1 px-3 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors">Import</button>
+      </div>
+    </div>
+  </div>
+{/if}

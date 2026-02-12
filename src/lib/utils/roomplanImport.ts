@@ -174,7 +174,78 @@ function straightenWalls(walls: Wall[], angleTolerance = 5, mergeDistance = 15):
     }
   }
 
-  // Pass 2: Merge nearby endpoints — collect all endpoints, cluster them, snap to cluster average
+  // Pass 2: Merge nearby endpoints
+  mergeEndpoints(walls, mergeDistance);
+}
+
+/**
+ * Enforce orthogonal: find the dominant wall direction, then snap
+ * every wall to be parallel or perpendicular to it.
+ */
+function enforceOrthogonal(walls: Wall[], mergeDistance = 15): void {
+  if (walls.length === 0) return;
+
+  // Find dominant angle: weighted by wall length
+  // Build histogram of angles (mod 90°) weighted by length
+  const angles: { angle: number; weight: number }[] = [];
+  for (const wall of walls) {
+    const dx = wall.end.x - wall.start.x;
+    const dy = wall.end.y - wall.start.y;
+    const len = Math.hypot(dx, dy);
+    if (len < 1) continue;
+    // Normalize angle to [0, 90°) since we only care about orientation mod 90
+    let angle = Math.atan2(dy, dx);
+    angle = ((angle % (Math.PI / 2)) + Math.PI / 2) % (Math.PI / 2);
+    angles.push({ angle, weight: len });
+  }
+
+  if (angles.length === 0) return;
+
+  // Weighted circular mean in [0, π/2)
+  let sinSum = 0, cosSum = 0;
+  for (const { angle, weight } of angles) {
+    // Double the angle to handle the π/2 wraparound
+    sinSum += Math.sin(angle * 4) * weight;
+    cosSum += Math.cos(angle * 4) * weight;
+  }
+  const dominantAngle = Math.atan2(sinSum, cosSum) / 4;
+
+  // The 4 allowed angles: dominant, dominant+90, dominant+180, dominant+270
+  const allowed = [0, 1, 2, 3].map(i => dominantAngle + i * Math.PI / 2);
+
+  // Snap each wall to the nearest allowed angle
+  for (const wall of walls) {
+    const dx = wall.end.x - wall.start.x;
+    const dy = wall.end.y - wall.start.y;
+    const len = Math.hypot(dx, dy);
+    if (len < 1) continue;
+
+    const currentAngle = Math.atan2(dy, dx);
+
+    // Find nearest allowed angle
+    let bestAngle = allowed[0];
+    let bestDiff = Infinity;
+    for (const a of allowed) {
+      let diff = Math.abs(((currentAngle - a + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
+      if (diff < bestDiff) { bestDiff = diff; bestAngle = a; }
+    }
+
+    // Recalculate endpoints from midpoint + snapped angle
+    const mx = (wall.start.x + wall.end.x) / 2;
+    const my = (wall.start.y + wall.end.y) / 2;
+    const halfLen = len / 2;
+    wall.start.x = Math.round(mx - Math.cos(bestAngle) * halfLen);
+    wall.start.y = Math.round(my - Math.sin(bestAngle) * halfLen);
+    wall.end.x = Math.round(mx + Math.cos(bestAngle) * halfLen);
+    wall.end.y = Math.round(my + Math.sin(bestAngle) * halfLen);
+  }
+
+  // Re-merge endpoints after snapping
+  mergeEndpoints(walls, mergeDistance);
+}
+
+/** Merge nearby wall endpoints to cluster average */
+function mergeEndpoints(walls: Wall[], mergeDistance: number): void {
   const endpoints: { wall: Wall; which: 'start' | 'end' }[] = [];
   for (const wall of walls) {
     endpoints.push({ wall, which: 'start' });
@@ -196,7 +267,6 @@ function straightenWalls(walls: Wall[], angleTolerance = 5, mergeDistance = 15):
     }
 
     if (cluster.length > 1) {
-      // Average position
       let ax = 0, ay = 0;
       for (const idx of cluster) {
         const p = endpoints[idx].which === 'start' ? endpoints[idx].wall.start : endpoints[idx].wall.end;
@@ -217,6 +287,7 @@ function straightenWalls(walls: Wall[], angleTolerance = 5, mergeDistance = 15):
 
 export interface RoomPlanImportOptions {
   straighten?: boolean;
+  orthogonal?: boolean;
   angleTolerance?: number;   // degrees, default 5
   mergeDistance?: number;     // cm, default 15
 }
@@ -282,9 +353,12 @@ export function importRoomPlan(jsonData: any, options: RoomPlanImportOptions = {
     });
   }
 
-  // Straighten walls if requested
-  if (options.straighten !== false) {
-    straightenWalls(walls, options.angleTolerance ?? 5, options.mergeDistance ?? 15);
+  // Post-process walls
+  const md = options.mergeDistance ?? 15;
+  if (options.orthogonal) {
+    enforceOrthogonal(walls, md);
+  } else if (options.straighten !== false) {
+    straightenWalls(walls, options.angleTolerance ?? 5, md);
   }
 
   // Process doors
