@@ -274,15 +274,18 @@
       }
 
       // Interior: use interiorColor/interiorTexture if set, else fall back to wall.color/wall.texture
+      // 'none' means explicitly no texture (overrides shared wall.texture)
+      const intTex = wall.interiorTexture === 'none' ? undefined : (wall.interiorTexture || wall.texture);
       let interiorMat = resolveWallMat(
         wall.interiorColor || wall.color,
-        wall.interiorTexture || wall.texture,
+        intTex,
         defaultInteriorMat
       );
       // Exterior: use exteriorColor/exteriorTexture if set, else fall back to wall.color/wall.texture (auto-darkened)
+      const extTex = wall.exteriorTexture === 'none' ? undefined : (wall.exteriorTexture || wall.texture);
       let exteriorMat: THREE.MeshStandardMaterial;
-      if (wall.exteriorTexture || wall.exteriorColor) {
-        exteriorMat = resolveWallMat(wall.exteriorColor, wall.exteriorTexture, defaultExteriorMat);
+      if (extTex || wall.exteriorColor) {
+        exteriorMat = resolveWallMat(wall.exteriorColor, extTex, defaultExteriorMat);
       } else if (wall.texture) {
         const extTex = generateWallTexture(wall.texture, wall.color || '#888888', wLen, wall.height);
         exteriorMat = new THREE.MeshStandardMaterial({ map: extTex, roughness: 0.85 });
