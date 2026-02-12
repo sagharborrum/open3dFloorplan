@@ -2948,6 +2948,9 @@
     <button class="hover:text-gray-700" onclick={() => showGrid = !showGrid} title="Toggle Grid (G)">
       {showGrid ? '▦' : '▢'} Grid
     </button>
+    <button class="hover:text-gray-700" onclick={() => showFurniture = !showFurniture} title="Toggle Furniture">
+      {showFurniture ? '🪑' : '👻'} Furniture
+    </button>
     <button class="hover:text-gray-700" onclick={() => showLayerPanel = !showLayerPanel} title="Layer Visibility">
       🗂 Layers
     </button>
