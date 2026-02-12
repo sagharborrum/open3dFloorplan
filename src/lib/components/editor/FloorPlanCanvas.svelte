@@ -104,6 +104,11 @@
   let calPoints: Point[] = $state([]);
   let bgImage: HTMLImageElement | null = $state(null);
 
+  // Room drag state
+  let draggingRoomId: string | null = $state(null);
+  let roomDragOffset: Point = { x: 0, y: 0 };
+  let roomDragStartPositions: Map<string, { start: Point; end: Point }> = new Map();
+
   // Wall endpoint drag state (includes all connected walls at the corner)
   let draggingWallEndpoint: { wallId: string; endpoint: 'start' | 'end' } | null = $state(null);
   let draggingConnectedEndpoints: { wallId: string; endpoint: 'start' | 'end' }[] = $state([]);
@@ -407,7 +412,7 @@
     const wallEndScreen = worldToScreen(wall.end.x, wall.end.y);
     
     // Draw thin lines from door center to each endpoint
-    ctx.strokeStyle = '#10b981';
+    ctx.strokeStyle = '#3b82f6';
     ctx.lineWidth = 1;
     ctx.setLineDash([3, 3]);
     
@@ -423,7 +428,7 @@
     
     ctx.setLineDash([]);
     
-    // Draw green pill dimension labels
+    // Draw pill dimension labels
     const fontSize = Math.max(10, 11 * zoom);
     ctx.font = `${fontSize}px sans-serif`;
     ctx.textAlign = 'center';
@@ -440,7 +445,7 @@
     const pillHeightA = fontSize + 6;
     
     // Green pill background
-    ctx.fillStyle = '#10b981';
+    ctx.fillStyle = '#3b82f6';
     ctx.beginPath();
     ctx.roundRect(midPointA.x - pillWidthA / 2, midPointA.y - pillHeightA / 2, pillWidthA, pillHeightA, pillHeightA / 2);
     ctx.fill();
@@ -460,7 +465,7 @@
     const pillHeightB = fontSize + 6;
     
     // Green pill background
-    ctx.fillStyle = '#10b981';
+    ctx.fillStyle = '#3b82f6';
     ctx.beginPath();
     ctx.roundRect(midPointB.x - pillWidthB / 2, midPointB.y - pillHeightB / 2, pillWidthB, pillHeightB, pillHeightB / 2);
     ctx.fill();
@@ -488,7 +493,7 @@
     const wallEndScreen = worldToScreen(wall.end.x, wall.end.y);
     
     // Draw thin lines from window center to each endpoint
-    ctx.strokeStyle = '#10b981';
+    ctx.strokeStyle = '#3b82f6';
     ctx.lineWidth = 1;
     ctx.setLineDash([3, 3]);
     
@@ -504,7 +509,7 @@
     
     ctx.setLineDash([]);
     
-    // Draw green pill dimension labels
+    // Draw pill dimension labels
     const fontSize = Math.max(10, 11 * zoom);
     ctx.font = `${fontSize}px sans-serif`;
     ctx.textAlign = 'center';
@@ -521,7 +526,7 @@
     const pillHeightA = fontSize + 6;
     
     // Green pill background
-    ctx.fillStyle = '#10b981';
+    ctx.fillStyle = '#3b82f6';
     ctx.beginPath();
     ctx.roundRect(midPointA.x - pillWidthA / 2, midPointA.y - pillHeightA / 2, pillWidthA, pillHeightA, pillHeightA / 2);
     ctx.fill();
@@ -541,7 +546,7 @@
     const pillHeightB = fontSize + 6;
     
     // Green pill background
-    ctx.fillStyle = '#10b981';
+    ctx.fillStyle = '#3b82f6';
     ctx.beginPath();
     ctx.roundRect(midPointB.x - pillWidthB / 2, midPointB.y - pillHeightB / 2, pillWidthB, pillHeightB, pillHeightB / 2);
     ctx.fill();
@@ -1170,7 +1175,7 @@
       if (snapWall) {
         const ws = worldToScreen(snapWall.start.x, snapWall.start.y);
         const we = worldToScreen(snapWall.end.x, snapWall.end.y);
-        ctx.strokeStyle = '#22c55e';
+        ctx.strokeStyle = '#3b82f6';
         ctx.lineWidth = 2;
         ctx.setLineDash([6, 3]);
         ctx.beginPath();
@@ -1921,6 +1926,24 @@
         const wall = floor.walls.find((w) => w.id === d.wallId);
         if (wall) {
           drawDoorOnWall(wall, d);
+          if (isSelected(d.id)) {
+            // Selection highlight box
+            const t = d.position;
+            const wpt = wallPointAt(wall, t);
+            const sp = worldToScreen(wpt.x, wpt.y);
+            const hw = (d.width / 2) * zoom + 4;
+            const hh = (wall.thickness / 2) * zoom + 8;
+            const angle = Math.atan2(wall.end.y - wall.start.y, wall.end.x - wall.start.x);
+            ctx.save();
+            ctx.translate(sp.x, sp.y);
+            ctx.rotate(angle);
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 3]);
+            ctx.strokeRect(-hw, -hh, hw * 2, hh * 2);
+            ctx.setLineDash([]);
+            ctx.restore();
+          }
           if (showDimensions && isSelected(d.id)) drawDoorDistanceDimensions(wall, d);
         }
       }
@@ -1930,6 +1953,23 @@
         const wall = floor.walls.find((w) => w.id === win.wallId);
         if (wall) {
           drawWindowOnWall(wall, win);
+          if (isSelected(win.id)) {
+            const t = win.position;
+            const wpt = wallPointAt(wall, t);
+            const sp = worldToScreen(wpt.x, wpt.y);
+            const hw = (win.width / 2) * zoom + 4;
+            const hh = (wall.thickness / 2) * zoom + 8;
+            const angle = Math.atan2(wall.end.y - wall.start.y, wall.end.x - wall.start.x);
+            ctx.save();
+            ctx.translate(sp.x, sp.y);
+            ctx.rotate(angle);
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 3]);
+            ctx.strokeRect(-hw, -hh, hw * 2, hh * 2);
+            ctx.setLineDash([]);
+            ctx.restore();
+          }
           if (showDimensions && isSelected(win.id)) drawWindowDistanceDimensions(wall, win);
         }
       }
@@ -1950,7 +1990,7 @@
       if (snapWall) {
         const s = worldToScreen(snapWall.start.x, snapWall.start.y);
         const e = worldToScreen(snapWall.end.x, snapWall.end.y);
-        ctx.strokeStyle = '#22c55e';
+        ctx.strokeStyle = '#3b82f6';
         ctx.lineWidth = 2;
         ctx.setLineDash([6, 3]);
         ctx.beginPath();
@@ -2029,7 +2069,7 @@
       const isNear = distToFirst < 20;
       ctx.beginPath();
       ctx.arc(fp.x, fp.y, isNear ? 8 : 5, 0, Math.PI * 2);
-      ctx.strokeStyle = isNear ? '#22c55e' : '#64748b';
+      ctx.strokeStyle = isNear ? '#3b82f6' : '#64748b';
       ctx.lineWidth = isNear ? 2.5 : 1.5;
       ctx.stroke();
       if (isNear) {
@@ -2069,12 +2109,12 @@
 
       // Snap indicator — green ring when snapping to existing endpoint
       if ((endPt as any).snappedToEndpoint) {
-        ctx.strokeStyle = '#22c55e';
+        ctx.strokeStyle = '#3b82f6';
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(e.x, e.y, 8, 0, Math.PI * 2);
         ctx.stroke();
-        ctx.fillStyle = '#22c55e40';
+        ctx.fillStyle = '#3b82f640';
         ctx.fill();
       }
     }
@@ -2616,6 +2656,15 @@
           selectedRoomId.set(room.id);
           selectedElementId.set(null);
           selectedElementIds.set(new Set());
+          // Start room drag
+          draggingRoomId = room.id;
+          const centroid = roomCentroid(getRoomPolygon(room, currentFloor!.walls));
+          roomDragOffset = { x: wp.x - centroid.x, y: wp.y - centroid.y };
+          roomDragStartPositions.clear();
+          for (const wid of room.wallIds) {
+            const w = currentFloor!.walls.find(wall => wall.id === wid);
+            if (w) roomDragStartPositions.set(wid, { start: { ...w.start }, end: { ...w.end } });
+          }
         } else {
           // Empty space — start marquee selection
           marqueeStart = { ...wp };
@@ -2742,6 +2791,35 @@
           if (fi) { moveFurniture(id, newPos); continue; }
           if (currentFloor.stairs) { const st = currentFloor.stairs.find(s => s.id === id); if (st) { moveStair(id, newPos); continue; } }
           if (currentFloor.columns) { const col = currentFloor.columns.find(c => c.id === id); if (col) { moveColumn(id, newPos); continue; } }
+        }
+      }
+    }
+    if (draggingRoomId && currentFloor) {
+      const dx = Math.round((mousePos.x - roomDragOffset.x) / SNAP) * SNAP;
+      const dy = Math.round((mousePos.y - roomDragOffset.y) / SNAP) * SNAP;
+      // Compute delta from original centroid
+      const room = detectedRooms.find(r => r.id === draggingRoomId);
+      if (room) {
+        const origPoly = getRoomPolygon(room, currentFloor.walls);
+        // Use first wall's original start as reference to compute delta
+        const firstWallId = room.wallIds[0];
+        const origPos = roomDragStartPositions.get(firstWallId);
+        if (origPos) {
+          const origCentroid = roomCentroid(
+            getRoomPolygon(room, 
+              currentFloor.walls.map(w => roomDragStartPositions.has(w.id) 
+                ? { ...w, start: roomDragStartPositions.get(w.id)!.start, end: roomDragStartPositions.get(w.id)!.end }
+                : w
+              )
+            )
+          );
+          const targetCentroid = { x: mousePos.x - roomDragOffset.x, y: mousePos.y - roomDragOffset.y };
+          const moveDx = snap(targetCentroid.x - origCentroid.x);
+          const moveDy = snap(targetCentroid.y - origCentroid.y);
+          for (const [wid, orig] of roomDragStartPositions) {
+            moveWallEndpoint(wid, 'start', { x: orig.start.x + moveDx, y: orig.start.y + moveDy });
+            moveWallEndpoint(wid, 'end', { x: orig.end.x + moveDx, y: orig.end.y + moveDy });
+          }
         }
       }
     }
@@ -2931,6 +3009,9 @@
     if (draggingWallParallel) commitFurnitureMove();
     if (draggingCurveHandle) commitFurnitureMove();
     if (draggingMultiSelect) commitFurnitureMove();
+    if (draggingRoomId) commitFurnitureMove();
+    draggingRoomId = null;
+    roomDragStartPositions.clear();
     draggingMultiSelect = null;
     draggingWallParallel = null;
     draggingCurveHandle = null;
@@ -3110,6 +3191,7 @@
 
   let cursorStyle = $derived(
     spaceDown || isPanning || $panMode || (shiftDown && currentTool === 'select') ? 'grab' :
+    draggingRoomId ? 'move' :
     draggingWallParallel ? 'move' :
     draggingCurveHandle ? 'crosshair' :
     draggingWallEndpoint ? 'crosshair' :
