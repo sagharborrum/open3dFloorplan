@@ -5,6 +5,8 @@
   import { roomPresets, placePreset } from '$lib/utils/roomPresets';
   import { furnitureCatalog, furnitureCategories } from '$lib/utils/furnitureCatalog';
   import type { FurnitureDef } from '$lib/utils/furnitureCatalog';
+  import { getModelFile, generateThumbnail, getThumbnail, preloadThumbnails } from '$lib/utils/furnitureThumbnails';
+  import { onMount } from 'svelte';
   import { importRoomPlan, extractRoomJsonFromZip, ORTHO_VERSION } from '$lib/utils/roomplanImport';
   import { currentProject, loadProject } from '$lib/stores/project';
   import type { Project } from '$lib/models/types';
@@ -12,6 +14,15 @@
   let activeTab = $state<'draw' | 'rooms' | 'objects'>('draw');
   let constructionOpen = $state(true);
   let selectedCategory = $state<string>('All');
+  let thumbsReady = $state(0); // increment to trigger reactivity
+
+  onMount(() => {
+    // Preload thumbnails, re-render as each completes
+    const files = new Set(furnitureCatalog.map(f => getModelFile(f.id)).filter(Boolean) as string[]);
+    for (const file of files) {
+      generateThumbnail(file).then(() => { thumbsReady++; });
+    }
+  });
 
   // RoomPlan import dialog state
   let showImportDialog = $state(false);
@@ -396,9 +407,13 @@
               class="flex flex-col items-center gap-1 p-3 rounded-lg border-2 transition-colors {currentPlacing === item.id ? 'border-blue-400 bg-blue-50 ring-1 ring-blue-300' : 'border-gray-100 hover:border-blue-300 hover:bg-blue-50'}"
               onclick={() => onFurnitureClick(item)}
             >
-              <div class="w-10 h-10 rounded-lg flex items-center justify-center" style="background-color: {item.color}20">
-                <div class="w-5 h-5 rounded-sm" style="background-color: {item.color}; opacity: 0.7"></div>
-              </div>
+              {#if thumbsReady >= 0 && getModelFile(item.id) && getThumbnail(getModelFile(item.id)!)}
+                <img src={getThumbnail(getModelFile(item.id)!)} alt={item.name} class="w-12 h-12 object-contain" />
+              {:else}
+                <div class="w-10 h-10 rounded-lg flex items-center justify-center" style="background-color: {item.color}20">
+                  <div class="w-5 h-5 rounded-sm" style="background-color: {item.color}; opacity: 0.7"></div>
+                </div>
+              {/if}
               <span class="text-xs font-medium text-gray-600">{item.name}</span>
               <span class="text-[10px] text-gray-400">{item.width}×{item.depth}cm</span>
             </button>
