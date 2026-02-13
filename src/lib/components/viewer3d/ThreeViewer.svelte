@@ -1,8 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { get } from 'svelte/store';
   import { activeFloor, detectedRoomsStore, selectedElementId } from '$lib/stores/project';
   import type { Floor, Wall, Door, Window as Win, Room, Stair } from '$lib/models/types';
   import { wallColors, type WallColor } from '$lib/utils/materials';
+  import { projectSettings, formatArea } from '$lib/stores/settings';
   import * as THREE from 'three';
   import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
   import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
@@ -313,11 +315,25 @@
     }
   }
 
+  function clearGroup(group: THREE.Group) {
+    while (group.children.length) {
+      const child = group.children[0];
+      child.traverse((obj: any) => {
+        if (obj.geometry) obj.geometry.dispose();
+        if (obj.material) {
+          if (Array.isArray(obj.material)) obj.material.forEach((m: any) => m.dispose());
+          else obj.material.dispose();
+        }
+      });
+      group.remove(child);
+    }
+  }
+
   function buildWalls(floor: Floor) {
-    while (wallGroup.children.length) wallGroup.remove(wallGroup.children[0]);
+    clearGroup(wallGroup);
     wallMeshMap.clear();
 
-    const defaultInteriorMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 });
+    const defaultInteriorMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
     const defaultExteriorMat = new THREE.MeshStandardMaterial({ color: 0xd4cfc9, roughness: 0.85 });
     const baseboardMat = new THREE.MeshStandardMaterial({ color: 0xe8e0d4, roughness: 0.7 });
 
@@ -326,13 +342,14 @@
       const DEFAULT_2D_COLORS = ['#cccccc', '#888888', '#444444', '#404040'];
       const wLen = Math.hypot(wall.end.x - wall.start.x, wall.end.y - wall.start.y);
 
-      function resolveWallMat(color: string | undefined, texture: string | undefined, fallback: THREE.MeshStandardMaterial): THREE.MeshStandardMaterial {
+      function resolveWallMat(color: string | undefined, texture: string | undefined, fallback: THREE.MeshStandardMaterial, isInterior: boolean = false): THREE.MeshStandardMaterial {
+        const polyOff = isInterior ? { polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 } : {};
         if (texture) {
           const tex = generateWallTexture(texture, color || '#888888', wLen, wall.height);
-          return new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85 });
+          return new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85, ...polyOff });
         }
         if (color && !DEFAULT_2D_COLORS.includes(color.toLowerCase())) {
-          return new THREE.MeshStandardMaterial({ color: new THREE.Color(color), roughness: 0.9 });
+          return new THREE.MeshStandardMaterial({ color: new THREE.Color(color), roughness: 0.9, ...polyOff });
         }
         return fallback;
       }
@@ -343,7 +360,8 @@
       let interiorMat = resolveWallMat(
         wall.interiorColor || wall.color,
         intTex,
-        defaultInteriorMat
+        defaultInteriorMat,
+        true
       );
       // Exterior: use exteriorColor/exteriorTexture if set, else fall back to wall.color/wall.texture (auto-darkened)
       const extTex = wall.exteriorTexture === 'none' ? undefined : (wall.exteriorTexture || wall.texture);
@@ -772,7 +790,7 @@
       ctx2.fillText(room.name, 128, 26);
       ctx2.font = '16px sans-serif';
       ctx2.fillStyle = '#d1d5db';
-      ctx2.fillText(`${room.area} m²`, 128, 50);
+      ctx2.fillText(formatArea(room.area, get(projectSettings).units), 128, 50);
 
       const tex = new THREE.CanvasTexture(canvas);
       const spriteMat = new THREE.SpriteMaterial({ map: tex, transparent: true });
@@ -1035,7 +1053,6 @@
 
     const unsubRooms = detectedRoomsStore.subscribe((rooms) => {
       savedRooms = rooms;
-      if (currentFloor) buildWalls(currentFloor);
     });
 
     // Highlight selected wall in 3D
@@ -1093,7 +1110,7 @@
   <!-- Edit Mode Toggle -->
   <button
     onclick={() => { editMode = !editMode; if (editMode && walkthroughMode) { exitWalkthroughMode(); } if (!editMode) selectedElementId.set(null); }}
-    class="absolute top-4 right-28 z-10 p-2 rounded-lg transition-colors {editMode ? 'bg-blue-600 text-white ring-2 ring-blue-300' : 'bg-black/70 text-white hover:bg-black/80'}"
+    class="absolute top-4 right-28 z-50 p-2 rounded-lg transition-colors {editMode ? 'bg-blue-600 text-white ring-2 ring-blue-300' : 'bg-black/70 text-white hover:bg-black/80'}"
     title={editMode ? 'Exit Edit Mode' : 'Edit Mode — click to select walls & change materials'}
   >
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1105,7 +1122,7 @@
   <!-- 3D Screenshot Button -->
   <button
     onclick={takeScreenshot}
-    class="absolute top-4 right-16 z-10 bg-black/70 text-white p-2 rounded-lg hover:bg-black/80 transition-colors"
+    class="absolute top-4 right-16 z-50 bg-black/70 text-white p-2 rounded-lg hover:bg-black/80 transition-colors"
     title="Save 3D Screenshot"
   >
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1117,7 +1134,7 @@
   <!-- Walkthrough Mode Toggle Button -->
   <button
     onclick={toggleWalkthroughMode}
-    class="absolute top-4 right-4 z-10 bg-black/70 text-white p-2 rounded-lg hover:bg-black/80 transition-colors"
+    class="absolute top-4 right-4 z-50 bg-black/70 text-white p-2 rounded-lg hover:bg-black/80 transition-colors"
     title={walkthroughMode ? 'Exit Walkthrough Mode' : 'Enter Walkthrough Mode'}
   >
     {#if walkthroughMode}

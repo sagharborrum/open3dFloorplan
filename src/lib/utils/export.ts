@@ -1,6 +1,8 @@
 import type { Project } from '$lib/models/types';
 import { getCatalogItem } from '$lib/utils/furnitureCatalog';
 import { detectRooms, getRoomPolygon, roomCentroid } from '$lib/utils/roomDetection';
+import { projectSettings, formatArea } from '$lib/stores/settings';
+import { get } from 'svelte/store';
 import jsPDF from 'jspdf';
 
 function download(blob: Blob, filename: string) {
@@ -55,7 +57,7 @@ export function exportAsSVG(project: Project) {
     const cx = c.x - minX + pad;
     const cy = c.y - minY + pad;
     paths += `  <text x="${cx}" y="${cy}" text-anchor="middle" font-size="12" fill="#444" font-family="sans-serif" font-weight="bold">${room.name}</text>\n`;
-    paths += `  <text x="${cx}" y="${cy + 14}" text-anchor="middle" font-size="10" fill="#888" font-family="sans-serif">${room.area} m²</text>\n`;
+    paths += `  <text x="${cx}" y="${cy + 14}" text-anchor="middle" font-size="10" fill="#888" font-family="sans-serif">${formatArea(room.area, get(projectSettings).units)}</text>\n`;
   }
 
   for (const w of floor.walls) {

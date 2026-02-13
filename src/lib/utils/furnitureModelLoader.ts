@@ -135,6 +135,15 @@ function scaleToFit(model: THREE.Group, def: FurnitureDef, mapping: ModelMapping
 
   if (size.x === 0 || size.y === 0 || size.z === 0) return;
 
+  // Detect Z-up orientation: if Y extent is very small compared to Z, rotate to Y-up
+  if (size.y < size.z * 0.5) {
+    model.rotation.x = -Math.PI / 2;
+    model.updateMatrixWorld(true);
+    // Recompute bounding box after rotation
+    box.setFromObject(model);
+    box.getSize(size);
+  }
+
   // Scale to match our catalog dimensions (in cm) — non-uniform to fill exact footprint
   // Our convention: width=X, height=Y, depth=Z
   const scaleX = def.width / size.x;

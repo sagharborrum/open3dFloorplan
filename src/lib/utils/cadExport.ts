@@ -2,6 +2,8 @@ import Drawing from 'dxf-writer';
 import type { Project } from '$lib/models/types';
 import { getCatalogItem } from '$lib/utils/furnitureCatalog';
 import { detectRooms, getRoomPolygon, roomCentroid } from '$lib/utils/roomDetection';
+import { projectSettings, formatArea } from '$lib/stores/settings';
+import { get } from 'svelte/store';
 
 function download(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -46,7 +48,7 @@ export function exportDXF(project: Project) {
     const c = roomCentroid(poly);
     // Y is flipped in screen coords vs CAD coords
     d.drawText(c.x, -c.y, 8, 0, room.name, 'center', 'middle');
-    d.drawText(c.x, -c.y - 12, 5, 0, `${room.area} m²`, 'center', 'middle');
+    d.drawText(c.x, -c.y - 12, 5, 0, `${formatArea(room.area, get(projectSettings).units)}`, 'center', 'middle');
   }
 
   // Draw walls as thick rectangles (offset perpendicular to wall direction)

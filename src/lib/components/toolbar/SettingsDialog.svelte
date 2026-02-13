@@ -27,7 +27,7 @@
       return p;
     });
   }
-  let activeTab = $state<'project' | 'dimensions'>('dimensions');
+  let activeTab = $state<'project' | 'dimensions'>('project');
   let settings = $state<ProjectSettings>({
     units: 'metric',
     showDimensions: true,

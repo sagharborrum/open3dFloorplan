@@ -10,7 +10,7 @@
   import { handleGlobalShortcut } from '$lib/utils/shortcuts';
   import { roomPresets, placePreset } from '$lib/utils/roomPresets';
   import { getWallTextureCanvas, getFloorTextureCanvas, setTextureLoadCallback } from '$lib/utils/textureGenerator';
-  import { projectSettings, formatLength } from '$lib/stores/settings';
+  import { projectSettings, formatLength, formatArea } from '$lib/stores/settings';
   import type { ProjectSettings } from '$lib/stores/settings';
 
   let canvas: HTMLCanvasElement;
@@ -112,6 +112,7 @@
   // Wall endpoint drag state (includes all connected walls at the corner)
   let draggingWallEndpoint: { wallId: string; endpoint: 'start' | 'end' } | null = $state(null);
   let draggingConnectedEndpoints: { wallId: string; endpoint: 'start' | 'end' }[] = $state([]);
+  let dragPreview: { x: number; y: number; type: string; width: number; depth: number } | null = $state(null);
 
   // Resize/rotate handle drag state
   type HandleType = 'resize-tl' | 'resize-tr' | 'resize-bl' | 'resize-br' | 'rotate';
@@ -412,21 +413,23 @@
     const wallEndScreen = worldToScreen(wall.end.x, wall.end.y);
     
     // Draw thin lines from door center to each endpoint
-    ctx.strokeStyle = '#3b82f6';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([3, 3]);
-    
-    ctx.beginPath();
-    ctx.moveTo(dcScreen.x, dcScreen.y);
-    ctx.lineTo(wallStartScreen.x, wallStartScreen.y);
-    ctx.stroke();
-    
-    ctx.beginPath();
-    ctx.moveTo(dcScreen.x, dcScreen.y);
-    ctx.lineTo(wallEndScreen.x, wallEndScreen.y);
-    ctx.stroke();
-    
-    ctx.setLineDash([]);
+    if (dimSettings.showExtensionLines) {
+      ctx.strokeStyle = '#3b82f6';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+      
+      ctx.beginPath();
+      ctx.moveTo(dcScreen.x, dcScreen.y);
+      ctx.lineTo(wallStartScreen.x, wallStartScreen.y);
+      ctx.stroke();
+      
+      ctx.beginPath();
+      ctx.moveTo(dcScreen.x, dcScreen.y);
+      ctx.lineTo(wallEndScreen.x, wallEndScreen.y);
+      ctx.stroke();
+      
+      ctx.setLineDash([]);
+    }
     
     // Draw pill dimension labels
     const fontSize = Math.max(10, 11 * zoom);
@@ -493,21 +496,23 @@
     const wallEndScreen = worldToScreen(wall.end.x, wall.end.y);
     
     // Draw thin lines from window center to each endpoint
-    ctx.strokeStyle = '#3b82f6';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([3, 3]);
-    
-    ctx.beginPath();
-    ctx.moveTo(wcScreen.x, wcScreen.y);
-    ctx.lineTo(wallStartScreen.x, wallStartScreen.y);
-    ctx.stroke();
-    
-    ctx.beginPath();
-    ctx.moveTo(wcScreen.x, wcScreen.y);
-    ctx.lineTo(wallEndScreen.x, wallEndScreen.y);
-    ctx.stroke();
-    
-    ctx.setLineDash([]);
+    if (dimSettings.showExtensionLines) {
+      ctx.strokeStyle = '#3b82f6';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+      
+      ctx.beginPath();
+      ctx.moveTo(wcScreen.x, wcScreen.y);
+      ctx.lineTo(wallStartScreen.x, wallStartScreen.y);
+      ctx.stroke();
+      
+      ctx.beginPath();
+      ctx.moveTo(wcScreen.x, wcScreen.y);
+      ctx.lineTo(wallEndScreen.x, wallEndScreen.y);
+      ctx.stroke();
+      
+      ctx.setLineDash([]);
+    }
     
     // Draw pill dimension labels
     const fontSize = Math.max(10, 11 * zoom);
@@ -596,12 +601,12 @@
 
       // Dimension label for curved wall (arc length)
       const wlen = wallLength(w);
-      if (wlen >= 10) {
+      if (wlen >= 10 && showDimensions && dimSettings.showExternalDimensions) {
         const midPt = wallPointAt(w, 0.5);
         const midS = worldToScreen(midPt.x, midPt.y);
         const midTan = wallTangentAt(w, 0.5);
         const offsetDist = thickness / 2 + 16;
-        ctx.fillStyle = '#374151';
+        ctx.fillStyle = dimSettings.dimensionLineColor;
         const fontSize = Math.max(10, 11 * zoom);
         ctx.font = `${fontSize}px sans-serif`;
         ctx.textAlign = 'center';
@@ -702,7 +707,7 @@
     }
 
     // Dimension line with arrowheads (architectural style)
-    if (!showDimensions) return;
+    if (!showDimensions || !dimSettings.showExternalDimensions) return;
     const wlen = wallLength(w);
     if (wlen < 10) return; // skip tiny walls
     const mx = (s.x + e.x) / 2;
@@ -723,7 +728,7 @@
     // Extension lines (from wall endpoints to dimension line)
     if (dimSettings.showExtensionLines) {
       const extLen = offsetDist + 4;
-      ctx.strokeStyle = dimSettings.dimensionLineColor === '#ffffff' ? '#d1d5db' : '#9ca3af';
+      ctx.strokeStyle = dimSettings.dimensionLineColor + '80'; // extension lines: lighter variant
       ctx.lineWidth = 0.5;
       ctx.beginPath();
       ctx.moveTo(s.x + nnx * (thickness / 2 + 2) * dimSide, s.y + nny * (thickness / 2 + 2) * dimSide);
@@ -750,7 +755,7 @@
     // Draw dimension line with gap for text
     const ux2 = dx / len, uy2 = dy / len;
     const halfGap = textW / 2 + 4;
-    ctx.strokeStyle = '#6b7280';
+    ctx.strokeStyle = dimSettings.dimensionLineColor;
     ctx.lineWidth = 0.75;
     ctx.beginPath();
     ctx.moveTo(ds.x, ds.y);
@@ -761,7 +766,7 @@
 
     // Arrowheads (tick marks — 45° slash at each end, architectural style)
     const tickSize = Math.max(4, 5 * zoom);
-    ctx.strokeStyle = '#6b7280';
+    ctx.strokeStyle = dimSettings.dimensionLineColor;
     ctx.lineWidth = 1;
     for (const pt of [ds, de]) {
       ctx.beginPath();
@@ -771,7 +776,7 @@
     }
 
     // Dimension text
-    ctx.fillStyle = '#374151';
+    ctx.fillStyle = dimSettings.dimensionLineColor;
     ctx.fillText(dimLabel, dimMx, dimMy);
 
     // Endpoint handles when selected (for drag-to-resize)
@@ -1353,7 +1358,7 @@
     ctx.font = 'bold 12px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
-    ctx.fillText(`${Math.round(dist)} cm`, mx, my - 6);
+    ctx.fillText(formatLength(dist, dimSettings.units), mx, my - 6);
   }
 
   function drawWallJoints(floor: Floor, selId: string | null) {
@@ -1555,11 +1560,11 @@
         ctx.font = `${fontSize}px sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(`${room.name} (${room.area} m²)`, sc.x, sc.y);
+        ctx.fillText(`${room.name} (${formatArea(room.area, dimSettings.units)})`, sc.x, sc.y);
       }
 
       // Room dimensions (width × depth from oriented bounding box)
-      if (showDimensions && poly.length >= 3) {
+      if (showDimensions && dimSettings.showInternalDimensions && poly.length >= 3) {
         let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
         for (const pt of poly) {
           if (pt.x < minX) minX = pt.x;
@@ -1984,6 +1989,90 @@
       }
     }
 
+    // Object distance dimensions (from selected furniture to room boundaries)
+    if (showDimensions && dimSettings.showObjectDistance && currentSelectedId && showFurniture) {
+      const selFurniture = floor.furniture.find(f => f.id === currentSelectedId);
+      if (selFurniture) {
+        const cat = getCatalogItem(selFurniture.catalogId);
+        if (cat) {
+          const fw = (selFurniture.width ?? cat.width) * Math.abs(selFurniture.scale?.x ?? 1);
+          const fd = (selFurniture.depth ?? cat.depth) * Math.abs(selFurniture.scale?.y ?? 1);
+          const fx = selFurniture.position.x;
+          const fy = selFurniture.position.y;
+          // AABB edges of the furniture (ignoring rotation for simplicity)
+          const fLeft = fx - fw / 2;
+          const fRight = fx + fw / 2;
+          const fTop = fy - fd / 2;
+          const fBottom = fy + fd / 2;
+          
+          // Find which room the furniture is in
+          let furnitureRoom: Room | null = null;
+          for (const room of detectedRooms) {
+            const poly = getRoomPolygon(room, floor.walls);
+            if (pointInPolygon(selFurniture.position, poly)) {
+              furnitureRoom = room;
+              break;
+            }
+          }
+          
+          if (furnitureRoom) {
+            const poly = getRoomPolygon(furnitureRoom, floor.walls);
+            // Get room AABB
+            let rMinX = Infinity, rMaxX = -Infinity, rMinY = Infinity, rMaxY = -Infinity;
+            for (const pt of poly) {
+              if (pt.x < rMinX) rMinX = pt.x;
+              if (pt.x > rMaxX) rMaxX = pt.x;
+              if (pt.y < rMinY) rMinY = pt.y;
+              if (pt.y > rMaxY) rMaxY = pt.y;
+            }
+            
+            // 4 distances: left, right, top, bottom
+            const distances = [
+              { label: formatLength(fLeft - rMinX, dimSettings.units), from: { x: fLeft, y: fy }, to: { x: rMinX, y: fy } },   // left
+              { label: formatLength(rMaxX - fRight, dimSettings.units), from: { x: fRight, y: fy }, to: { x: rMaxX, y: fy } },  // right
+              { label: formatLength(fTop - rMinY, dimSettings.units), from: { x: fx, y: fTop }, to: { x: fx, y: rMinY } },      // top
+              { label: formatLength(rMaxY - fBottom, dimSettings.units), from: { x: fx, y: fBottom }, to: { x: fx, y: rMaxY } }, // bottom
+            ];
+            
+            const fontSize = Math.max(9, 10 * zoom);
+            ctx.font = `${fontSize}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            for (const d of distances) {
+              const fromS = worldToScreen(d.from.x, d.from.y);
+              const toS = worldToScreen(d.to.x, d.to.y);
+              const dist = Math.hypot(d.to.x - d.from.x, d.to.y - d.from.y);
+              if (dist < 1) continue;
+              
+              // Dashed line
+              ctx.strokeStyle = '#f97316';
+              ctx.lineWidth = 1;
+              ctx.setLineDash([3, 3]);
+              ctx.beginPath();
+              ctx.moveTo(fromS.x, fromS.y);
+              ctx.lineTo(toS.x, toS.y);
+              ctx.stroke();
+              ctx.setLineDash([]);
+              
+              // Dimension pill at midpoint
+              const mx = (fromS.x + toS.x) / 2;
+              const my = (fromS.y + toS.y) / 2;
+              const tw = ctx.measureText(d.label).width;
+              const pw = tw + 8;
+              const ph = fontSize + 4;
+              ctx.fillStyle = '#f97316';
+              ctx.beginPath();
+              ctx.roundRect(mx - pw / 2, my - ph / 2, pw, ph, ph / 2);
+              ctx.fill();
+              ctx.fillStyle = '#ffffff';
+              ctx.fillText(d.label, mx, my);
+            }
+          }
+        }
+      }
+    }
+
     // Wall snap indicator — highlight the target wall
     if (wallSnapInfo && currentFloor) {
       const snapWall = currentFloor.walls.find(w => w.id === wallSnapInfo!.wallId);
@@ -2103,7 +2192,7 @@
       ctx.fillStyle = '#3b82f6';
       ctx.font = '12px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(`${Math.round(plen)} cm`, (s.x + e.x) / 2, (s.y + e.y) / 2 - 14);
+      ctx.fillText(formatLength(plen, dimSettings.units), (s.x + e.x) / 2, (s.y + e.y) / 2 - 14);
       const angle = Math.atan2(endPt.y - wallStart.y, endPt.x - wallStart.x) * 180 / Math.PI;
       ctx.fillText(`${Math.round(angle)}°`, (s.x + e.x) / 2, (s.y + e.y) / 2 + 16);
 
@@ -2193,6 +2282,23 @@
 
     // Measurement
     if (measureStart && measuring) drawMeasurement();
+
+    // Drag preview ghost
+    if (dragPreview) {
+      const dp = dragPreview;
+      const s = worldToScreen(dp.x - dp.width / 2, dp.y - dp.depth / 2);
+      const e2 = worldToScreen(dp.x + dp.width / 2, dp.y + dp.depth / 2);
+      ctx.save();
+      ctx.globalAlpha = 0.3;
+      ctx.fillStyle = '#3b82f6';
+      ctx.fillRect(s.x, s.y, e2.x - s.x, e2.y - s.y);
+      ctx.strokeStyle = '#3b82f6';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 4]);
+      ctx.strokeRect(s.x, s.y, e2.x - s.x, e2.y - s.y);
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
 
     // Rulers (drawn last, on top of everything)
     drawRulers();
@@ -3077,11 +3183,22 @@
     if (e.dataTransfer?.types.includes('application/o3d-type')) {
       e.preventDefault();
       if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+      const rect = canvas.getBoundingClientRect();
+      const wp = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
+      const itemType = e.dataTransfer?.types.includes('application/o3d-type') ? 'item' : '';
+      // Default preview size (furniture ~60x60cm, room ~400x300cm)
+      const isRoom = e.dataTransfer?.types.includes('application/o3d-type');
+      dragPreview = { x: wp.x, y: wp.y, type: itemType, width: 60, depth: 60 };
     }
+  }
+
+  function onDragLeave(e: DragEvent) {
+    dragPreview = null;
   }
 
   function onDrop(e: DragEvent) {
     e.preventDefault();
+    dragPreview = null;
     const itemType = e.dataTransfer?.getData('application/o3d-type');
     const itemId = e.dataTransfer?.getData('application/o3d-id');
     if (!itemType || !itemId) return;
@@ -3196,12 +3313,13 @@
     onwheel={onWheel}
     oncontextmenu={onContextMenu}
     ondragover={onDragOver}
+    ondragleave={onDragLeave}
     ondrop={onDrop}
   ></canvas>
   <div class="absolute bottom-2 right-2 bg-white/80 rounded px-2 py-1 text-xs text-gray-500 flex gap-3">
     {#if detectedRooms.length > 0}
       <span>{detectedRooms.length} room{detectedRooms.length !== 1 ? 's' : ''}</span>
-      <span>{detectedRooms.reduce((s, r) => s + r.area, 0).toFixed(1)} m²</span>
+      <span>{formatArea(detectedRooms.reduce((s, r) => s + r.area, 0), $projectSettings.units)}</span>
       <span class="text-gray-300">|</span>
     {/if}
     {#if currentFloor}

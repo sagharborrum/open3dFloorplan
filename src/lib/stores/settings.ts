@@ -71,7 +71,8 @@ export function formatLength(cm: number, units: 'metric' | 'imperial'): string {
   // Metric
   if (cm >= 100) {
     const m = cm / 100;
-    return m % 1 === 0 ? `${m} m` : `${m.toFixed(2)} m`;
+    if (m % 1 === 0) return `${m} m`;
+    return `${parseFloat(m.toFixed(2))} m`;
   }
   return `${Math.round(cm)} cm`;
 }
@@ -89,6 +90,15 @@ export function formatLengthPrecise(cm: number, units: 'metric' | 'imperial'): s
     return `${(cm / 100).toFixed(2)} m`;
   }
   return `${cm.toFixed(1)} cm`;
+}
+
+/** Format area (m²) to display string based on units */
+export function formatArea(m2: number, units: 'metric' | 'imperial'): string {
+  if (units === 'imperial') {
+    const ft2 = m2 * 10.7639;
+    return `${ft2.toFixed(1)} ft²`;
+  }
+  return `${m2.toFixed(1)} m²`;
 }
 
 /** Parse user input back to cm */

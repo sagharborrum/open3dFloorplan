@@ -2,6 +2,7 @@
   import { activeFloor, selectedElementId, selectedRoomId, updateWall, updateDoor, updateWindow, updateRoom, updateFurniture, detectedRoomsStore, updateStair, updateColumn, updateBackgroundImage, setBackgroundImage, calibrationMode, calibrationPoints } from '$lib/stores/project';
   import { floorMaterials, wallColors } from '$lib/utils/materials';
   import { getCatalogItem } from '$lib/utils/furnitureCatalog';
+  import { projectSettings, formatLength, formatArea } from '$lib/stores/settings';
   import type { Floor, Wall, Door, Window as Win, Room, FurnitureItem, Stair, Column } from '$lib/models/types';
 
   let floor: Floor | null = $state(null);
@@ -13,6 +14,19 @@
   selectedElementId.subscribe((id) => { selId = id; });
   selectedRoomId.subscribe((id) => { selRoomId = id; });
   detectedRoomsStore.subscribe((rooms) => { detectedRooms = rooms; });
+
+  let settings = $state($projectSettings);
+  projectSettings.subscribe((s) => { settings = s; });
+
+  function displayValue(cm: number): number {
+    return settings.units === 'imperial' ? Math.round(cm / 2.54 * 10) / 10 : cm;
+  }
+  function inputToCm(value: number): number {
+    return settings.units === 'imperial' ? value * 2.54 : value;
+  }
+  function unitLabel(): string {
+    return settings.units === 'imperial' ? 'in' : 'cm';
+  }
 
   let { is3D = false }: { is3D?: boolean } = $props();
   let wallSideTab = $state<'interior' | 'exterior'>('interior');
@@ -57,11 +71,11 @@
 
   function onWallThickness(e: Event) {
     if (!selectedWall) return;
-    updateWall(selectedWall.id, { thickness: Number((e.target as HTMLInputElement).value) });
+    updateWall(selectedWall.id, { thickness: inputToCm(Number((e.target as HTMLInputElement).value)) });
   }
   function onWallHeight(e: Event) {
     if (!selectedWall) return;
-    updateWall(selectedWall.id, { height: Number((e.target as HTMLInputElement).value) });
+    updateWall(selectedWall.id, { height: inputToCm(Number((e.target as HTMLInputElement).value)) });
   }
   function onWallColor(e: Event) {
     if (!selectedWall) return;
@@ -69,11 +83,11 @@
   }
   function onDoorWidth(e: Event) {
     if (!selectedDoor) return;
-    updateDoor(selectedDoor.id, { width: Number((e.target as HTMLInputElement).value) });
+    updateDoor(selectedDoor.id, { width: inputToCm(Number((e.target as HTMLInputElement).value)) });
   }
   function onDoorHeight(e: Event) {
     if (!selectedDoor) return;
-    updateDoor(selectedDoor.id, { height: Number((e.target as HTMLInputElement).value) });
+    updateDoor(selectedDoor.id, { height: inputToCm(Number((e.target as HTMLInputElement).value)) });
   }
   function onDoorType(e: Event) {
     if (!selectedDoor) return;
@@ -97,15 +111,15 @@
   }
   function onWindowWidth(e: Event) {
     if (!selectedWindow) return;
-    updateWindow(selectedWindow.id, { width: Number((e.target as HTMLInputElement).value) });
+    updateWindow(selectedWindow.id, { width: inputToCm(Number((e.target as HTMLInputElement).value)) });
   }
   function onWindowHeight(e: Event) {
     if (!selectedWindow) return;
-    updateWindow(selectedWindow.id, { height: Number((e.target as HTMLInputElement).value) });
+    updateWindow(selectedWindow.id, { height: inputToCm(Number((e.target as HTMLInputElement).value)) });
   }
   function onWindowSill(e: Event) {
     if (!selectedWindow) return;
-    updateWindow(selectedWindow.id, { sillHeight: Number((e.target as HTMLInputElement).value) });
+    updateWindow(selectedWindow.id, { sillHeight: inputToCm(Number((e.target as HTMLInputElement).value)) });
   }
 
   // Furniture handlers
@@ -115,15 +129,15 @@
   }
   function onFurnitureWidth(e: Event) {
     if (!selectedFurniture) return;
-    updateFurniture(selectedFurniture.id, { width: Number((e.target as HTMLInputElement).value) });
+    updateFurniture(selectedFurniture.id, { width: inputToCm(Number((e.target as HTMLInputElement).value)) });
   }
   function onFurnitureDepth(e: Event) {
     if (!selectedFurniture) return;
-    updateFurniture(selectedFurniture.id, { depth: Number((e.target as HTMLInputElement).value) });
+    updateFurniture(selectedFurniture.id, { depth: inputToCm(Number((e.target as HTMLInputElement).value)) });
   }
   function onFurnitureHeight(e: Event) {
     if (!selectedFurniture) return;
-    updateFurniture(selectedFurniture.id, { height: Number((e.target as HTMLInputElement).value) });
+    updateFurniture(selectedFurniture.id, { height: inputToCm(Number((e.target as HTMLInputElement).value)) });
   }
   function onFurnitureMaterial(e: Event) {
     if (!selectedFurniture) return;
@@ -141,7 +155,7 @@
   // Door distance handlers
   function onDoorDistFromA(e: Event) {
     if (!selectedDoor || !selectedDoorWall) return;
-    const newDistFromA = Number((e.target as HTMLInputElement).value);
+    const newDistFromA = inputToCm(Number((e.target as HTMLInputElement).value));
     const wallLen = calcWallLength(selectedDoorWall);
     const newPosition = Math.max(0.05, Math.min(0.95, newDistFromA / wallLen));
     updateDoor(selectedDoor.id, { position: newPosition });
@@ -149,7 +163,7 @@
   
   function onDoorDistFromB(e: Event) {
     if (!selectedDoor || !selectedDoorWall) return;
-    const newDistFromB = Number((e.target as HTMLInputElement).value);
+    const newDistFromB = inputToCm(Number((e.target as HTMLInputElement).value));
     const wallLen = calcWallLength(selectedDoorWall);
     const newPosition = Math.max(0.05, Math.min(0.95, 1 - (newDistFromB / wallLen)));
     updateDoor(selectedDoor.id, { position: newPosition });
@@ -158,7 +172,7 @@
   // Window distance handlers
   function onWindowDistFromA(e: Event) {
     if (!selectedWindow || !selectedWindowWall) return;
-    const newDistFromA = Number((e.target as HTMLInputElement).value);
+    const newDistFromA = inputToCm(Number((e.target as HTMLInputElement).value));
     const wallLen = calcWallLength(selectedWindowWall);
     const newPosition = Math.max(0.05, Math.min(0.95, newDistFromA / wallLen));
     updateWindow(selectedWindow.id, { position: newPosition });
@@ -166,7 +180,7 @@
   
   function onWindowDistFromB(e: Event) {
     if (!selectedWindow || !selectedWindowWall) return;
-    const newDistFromB = Number((e.target as HTMLInputElement).value);
+    const newDistFromB = inputToCm(Number((e.target as HTMLInputElement).value));
     const wallLen = calcWallLength(selectedWindowWall);
     const newPosition = Math.max(0.05, Math.min(0.95, 1 - (newDistFromB / wallLen)));
     updateWindow(selectedWindow.id, { position: newPosition });
@@ -220,8 +234,7 @@
   let hasSelection = $derived(!!selectedWall || !!selectedDoor || !!selectedWindow || !!selectedFurniture || !!selectedRoom || !!selectedStair || !!selectedColumn || (!is3D && hasBgImage));
 </script>
 
-{#if hasSelection}
-<div class="{is3D ? 'w-80' : 'w-64'} shrink-0 bg-white border-l border-gray-200 flex flex-col overflow-y-auto p-3 fixed right-0 z-20 shadow-lg" style="top: 48px; bottom: 36px;">
+<div class="{is3D ? 'w-80' : 'w-64'} shrink-0 bg-white border-l border-gray-200 flex flex-col overflow-y-auto p-3 fixed right-0 z-40 shadow-lg" class:hidden={!hasSelection} style="top: 48px; bottom: 36px;">
   {#if selectedWall}
     <h3 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
       <span class="w-6 h-6 bg-gray-200 rounded flex items-center justify-center text-xs">▭</span>
@@ -229,16 +242,16 @@
     </h3>
     <div class="space-y-3">
       <label class="block">
-        <span class="text-xs text-gray-500">Length (cm)</span>
-        <input type="number" value={wallLength} disabled class="w-full px-2 py-1 border border-gray-200 rounded text-sm bg-gray-50" />
+        <span class="text-xs text-gray-500">Length ({unitLabel()})</span>
+        <input type="number" value={displayValue(wallLength)} disabled class="w-full px-2 py-1 border border-gray-200 rounded text-sm bg-gray-50" />
       </label>
       <label class="block">
-        <span class="text-xs text-gray-500">Thickness (cm)</span>
-        <input type="number" value={selectedWall.thickness} oninput={onWallThickness} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
+        <span class="text-xs text-gray-500">Thickness ({unitLabel()})</span>
+        <input type="number" value={displayValue(selectedWall.thickness)} oninput={onWallThickness} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
       </label>
       <label class="block">
-        <span class="text-xs text-gray-500">Height (cm)</span>
-        <input type="number" value={selectedWall.height} oninput={onWallHeight} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
+        <span class="text-xs text-gray-500">Height ({unitLabel()})</span>
+        <input type="number" value={displayValue(selectedWall.height)} oninput={onWallHeight} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
       </label>
       <div class="flex items-center gap-2">
         <span class="text-xs text-gray-500">Curved</span>
@@ -356,20 +369,20 @@
     </h3>
     <div class="space-y-3">
       <label class="block">
-        <span class="text-xs text-gray-500">Width (cm)</span>
-        <input type="number" value={selectedDoor.width} oninput={onDoorWidth} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
+        <span class="text-xs text-gray-500">Width ({unitLabel()})</span>
+        <input type="number" value={displayValue(selectedDoor.width)} oninput={onDoorWidth} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
       </label>
       <label class="block">
-        <span class="text-xs text-gray-500">Distance from A (cm)</span>
-        <input type="number" value={doorDistFromA} oninput={onDoorDistFromA} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
+        <span class="text-xs text-gray-500">Distance from A ({unitLabel()})</span>
+        <input type="number" value={displayValue(doorDistFromA)} oninput={onDoorDistFromA} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
       </label>
       <label class="block">
-        <span class="text-xs text-gray-500">Distance from B (cm)</span>
-        <input type="number" value={doorDistFromB} oninput={onDoorDistFromB} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
+        <span class="text-xs text-gray-500">Distance from B ({unitLabel()})</span>
+        <input type="number" value={displayValue(doorDistFromB)} oninput={onDoorDistFromB} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
       </label>
       <label class="block">
-        <span class="text-xs text-gray-500">Height (cm)</span>
-        <input type="number" value={selectedDoor.height ?? 210} oninput={onDoorHeight} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
+        <span class="text-xs text-gray-500">Height ({unitLabel()})</span>
+        <input type="number" value={displayValue(selectedDoor.height ?? 210)} oninput={onDoorHeight} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
       </label>
       <label class="block">
         <span class="text-xs text-gray-500">Type</span>
@@ -415,24 +428,24 @@
         </select>
       </label>
       <label class="block">
-        <span class="text-xs text-gray-500">Width (cm)</span>
-        <input type="number" value={selectedWindow.width} oninput={onWindowWidth} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
+        <span class="text-xs text-gray-500">Width ({unitLabel()})</span>
+        <input type="number" value={displayValue(selectedWindow.width)} oninput={onWindowWidth} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
       </label>
       <label class="block">
-        <span class="text-xs text-gray-500">Distance from A (cm)</span>
-        <input type="number" value={windowDistFromA} oninput={onWindowDistFromA} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
+        <span class="text-xs text-gray-500">Distance from A ({unitLabel()})</span>
+        <input type="number" value={displayValue(windowDistFromA)} oninput={onWindowDistFromA} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
       </label>
       <label class="block">
-        <span class="text-xs text-gray-500">Distance from B (cm)</span>
-        <input type="number" value={windowDistFromB} oninput={onWindowDistFromB} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
+        <span class="text-xs text-gray-500">Distance from B ({unitLabel()})</span>
+        <input type="number" value={displayValue(windowDistFromB)} oninput={onWindowDistFromB} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
       </label>
       <label class="block">
-        <span class="text-xs text-gray-500">Height (cm)</span>
-        <input type="number" value={selectedWindow.height} oninput={onWindowHeight} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
+        <span class="text-xs text-gray-500">Height ({unitLabel()})</span>
+        <input type="number" value={displayValue(selectedWindow.height)} oninput={onWindowHeight} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
       </label>
       <label class="block">
-        <span class="text-xs text-gray-500">Sill Height (cm)</span>
-        <input type="number" value={selectedWindow.sillHeight} oninput={onWindowSill} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
+        <span class="text-xs text-gray-500">Sill Height ({unitLabel()})</span>
+        <input type="number" value={displayValue(selectedWindow.sillHeight)} oninput={onWindowSill} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
       </label>
     </div>
 
@@ -477,28 +490,28 @@
       
       <!-- Dimensions -->
       <label class="block">
-        <span class="text-xs text-gray-500">Width (cm)</span>
+        <span class="text-xs text-gray-500">Width ({unitLabel()})</span>
         <input 
           type="number" 
-          value={selectedFurniture.width ?? getCatalogItem(selectedFurniture.catalogId)?.width ?? 100} 
+          value={displayValue(selectedFurniture.width ?? getCatalogItem(selectedFurniture.catalogId)?.width ?? 100)} 
           oninput={onFurnitureWidth} 
           class="w-full px-2 py-1 border border-gray-200 rounded text-sm" 
         />
       </label>
       <label class="block">
-        <span class="text-xs text-gray-500">Depth (cm)</span>
+        <span class="text-xs text-gray-500">Depth ({unitLabel()})</span>
         <input 
           type="number" 
-          value={selectedFurniture.depth ?? getCatalogItem(selectedFurniture.catalogId)?.depth ?? 80} 
+          value={displayValue(selectedFurniture.depth ?? getCatalogItem(selectedFurniture.catalogId)?.depth ?? 80)} 
           oninput={onFurnitureDepth} 
           class="w-full px-2 py-1 border border-gray-200 rounded text-sm" 
         />
       </label>
       <label class="block">
-        <span class="text-xs text-gray-500">Height (cm)</span>
+        <span class="text-xs text-gray-500">Height ({unitLabel()})</span>
         <input 
           type="number" 
-          value={selectedFurniture.height ?? getCatalogItem(selectedFurniture.catalogId)?.height ?? 80} 
+          value={displayValue(selectedFurniture.height ?? getCatalogItem(selectedFurniture.catalogId)?.height ?? 80)} 
           oninput={onFurnitureHeight} 
           class="w-full px-2 py-1 border border-gray-200 rounded text-sm" 
         />
@@ -589,7 +602,7 @@
       </label>
       <div>
         <span class="text-xs text-gray-500">Area</span>
-        <p class="text-sm text-gray-700">{selectedRoom.area} m²</p>
+        <p class="text-sm text-gray-700">{formatArea(selectedRoom.area, settings.units)}</p>
       </div>
       <div>
         <div class="flex items-center gap-1 mb-2">
@@ -634,12 +647,12 @@
     </h3>
     <div class="space-y-3">
       <label class="block">
-        <span class="text-xs text-gray-500">Width (cm)</span>
-        <input type="number" value={selectedStair.width} oninput={(e) => updateStair(selectedStair!.id, { width: Number((e.target as HTMLInputElement).value) })} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
+        <span class="text-xs text-gray-500">Width ({unitLabel()})</span>
+        <input type="number" value={displayValue(selectedStair.width)} oninput={(e) => updateStair(selectedStair!.id, { width: inputToCm(Number((e.target as HTMLInputElement).value)) })} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
       </label>
       <label class="block">
-        <span class="text-xs text-gray-500">Depth (cm)</span>
-        <input type="number" value={selectedStair.depth} oninput={(e) => updateStair(selectedStair!.id, { depth: Number((e.target as HTMLInputElement).value) })} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
+        <span class="text-xs text-gray-500">Depth ({unitLabel()})</span>
+        <input type="number" value={displayValue(selectedStair.depth)} oninput={(e) => updateStair(selectedStair!.id, { depth: inputToCm(Number((e.target as HTMLInputElement).value)) })} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
       </label>
       <label class="block">
         <span class="text-xs text-gray-500">Risers</span>
@@ -671,12 +684,12 @@
         </div>
       </label>
       <label class="block">
-        <span class="text-xs text-gray-500">{selectedColumn.shape === 'round' ? 'Diameter' : 'Side Length'} (cm)</span>
-        <input type="number" value={selectedColumn.diameter} min="10" max="200" oninput={(e) => updateColumn(selectedColumn!.id, { diameter: Number((e.target as HTMLInputElement).value) })} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
+        <span class="text-xs text-gray-500">{selectedColumn.shape === 'round' ? 'Diameter' : 'Side Length'} ({unitLabel()})</span>
+        <input type="number" value={displayValue(selectedColumn.diameter)} min="10" max="200" oninput={(e) => updateColumn(selectedColumn!.id, { diameter: inputToCm(Number((e.target as HTMLInputElement).value)) })} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
       </label>
       <label class="block">
-        <span class="text-xs text-gray-500">Height (cm)</span>
-        <input type="number" value={selectedColumn.height} min="50" max="1000" oninput={(e) => updateColumn(selectedColumn!.id, { height: Number((e.target as HTMLInputElement).value) })} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
+        <span class="text-xs text-gray-500">Height ({unitLabel()})</span>
+        <input type="number" value={displayValue(selectedColumn.height)} min="50" max="1000" oninput={(e) => updateColumn(selectedColumn!.id, { height: inputToCm(Number((e.target as HTMLInputElement).value)) })} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
       </label>
       <label class="block">
         <span class="text-xs text-gray-500">Color</span>
@@ -729,4 +742,3 @@
     </div>
   {/if}
 </div>
-{/if}
