@@ -1,6 +1,8 @@
 <script>
   import '../app.css';
-  import '$lib/firebase';
+  import { browser } from '$app/environment';
+  import { onMount } from 'svelte';
+  onMount(() => { import('$lib/firebase'); });
   let { children } = $props();
 </script>
 
