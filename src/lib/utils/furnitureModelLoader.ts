@@ -135,8 +135,9 @@ function scaleToFit(model: THREE.Group, def: FurnitureDef, mapping: ModelMapping
 
   if (size.x === 0 || size.y === 0 || size.z === 0) return;
 
-  // Detect Z-up orientation: if Y extent is very small compared to Z, rotate to Y-up
-  if (size.y < size.z * 0.5) {
+  // Detect Z-up orientation: only rotate if Y is near-zero (truly flat/degenerate)
+  // Don't rotate models that are just naturally short (like beds, tables)
+  if (size.y < 0.01 && size.z > size.y * 10) {
     model.rotation.x = -Math.PI / 2;
     model.updateMatrixWorld(true);
     // Recompute bounding box after rotation
