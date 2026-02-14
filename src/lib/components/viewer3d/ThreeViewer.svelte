@@ -214,11 +214,22 @@
 
   function moveCameraBy(dx: number, dz: number) {
     cameraPosition = { ...cameraPosition, x: cameraPosition.x + dx, z: cameraPosition.z + dz };
+    updateCameraMarkerFromState();
+    cameraPreviewDirty = true;
+  }
+
+  /** Rebuild the 3D camera marker to match current yaw/pitch/position state */
+  function updateCameraMarkerFromState() {
+    const yawRad = cameraYaw * Math.PI / 180;
+    const cos = Math.cos(yawRad);
+    const sin = Math.sin(yawRad);
+    const dirX = cameraBaseDir.x * cos - cameraBaseDir.z * sin;
+    const dirZ = cameraBaseDir.x * sin + cameraBaseDir.z * cos;
+    const lookDist = 200;
     createCameraMarker(
       new THREE.Vector3(cameraPosition.x, 0, cameraPosition.z),
-      new THREE.Vector3(cameraPosition.x + cameraBaseDir.x * 200, 0, cameraPosition.z + cameraBaseDir.z * 200)
+      new THREE.Vector3(cameraPosition.x + dirX * lookDist, 0, cameraPosition.z + dirZ * lookDist)
     );
-    cameraPreviewDirty = true;
   }
 
   function createCameraMarker(pos: THREE.Vector3, lookAt: THREE.Vector3) {
@@ -360,11 +371,13 @@
     cameraPreviewDirty = false;
   }
 
-  // Auto-render preview when dirty flag is set
+  // Auto-render preview + update 3D marker when dirty flag is set
   $effect(() => {
     if (cameraPreviewDirty && cameraPreviewCanvas && cameraPlaced) {
-      // Use requestAnimationFrame to ensure canvas is in DOM
-      requestAnimationFrame(() => renderCameraPreview());
+      requestAnimationFrame(() => {
+        updateCameraMarkerFromState();
+        renderCameraPreview();
+      });
     }
   });
 
