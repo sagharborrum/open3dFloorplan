@@ -114,13 +114,12 @@
   const STYLE_OPTIONS = ['photorealistic', 'architectural visualization', 'interior design magazine', 'minimalist', 'scandinavian', 'industrial', 'mid-century modern', 'luxury'];
   const LIGHTING_OPTIONS = ['natural daylight', 'warm afternoon', 'golden hour', 'soft ambient', 'dramatic shadows', 'bright and airy', 'moody evening', 'studio lighting'];
   const MOOD_OPTIONS = ['warm and inviting', 'clean and modern', 'cozy', 'elegant', 'rustic charm', 'sophisticated', 'relaxed', 'vibrant'];
-  let aiModel = $state('gemini-2.5-flash');
+  let aiModel = $state('gemini-2.0-flash-exp');
   const AI_MODELS = [
-    { id: 'gemini-3-pro', name: 'Gemini 3 Pro', desc: 'Most intelligent — best multimodal & visuals' },
-    { id: 'gemini-3-flash', name: 'Gemini 3 Flash', desc: 'Balanced — speed + frontier intelligence' },
-    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', desc: 'Best price-performance, fast' },
-    { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash-Lite', desc: 'Ultra fast, cost-efficient' },
-    { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', desc: 'Advanced thinking & reasoning' },
+    { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash', desc: 'Image generation supported ✓', supportsImage: true },
+    { id: 'imagen-3.0-generate-002', name: 'Imagen 3', desc: 'Google\'s dedicated image model ✓', supportsImage: true, isImagen: true },
+    { id: 'gemini-2.5-flash-preview-05-20', name: 'Gemini 2.5 Flash', desc: 'Image generation (preview) ✓', supportsImage: true },
+    { id: 'gemini-2.5-pro-preview-06-05', name: 'Gemini 2.5 Pro', desc: 'Image generation (preview) ✓', supportsImage: true },
   ];
 
   function buildAIPrompt(): string {
@@ -163,38 +162,64 @@
       
       const base64Image = imageDataUrl.split(',')[1];
       const prompt = buildAIPrompt();
+      const modelConfig = AI_MODELS.find(m => m.id === aiModel);
       
-      // Call Gemini API with image
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=${geminiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [
-              { inlineData: { mimeType: 'image/png', data: base64Image } },
-              { text: prompt }
-            ]
-          }],
-          generationConfig: {
-            responseModalities: ['IMAGE', 'TEXT'],
-            temperature: 1.0,
-          }
-        })
-      });
+      let response: Response;
+      
+      if (modelConfig?.isImagen) {
+        // Imagen API — different endpoint and format
+        response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:predict?key=${geminiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            instances: [{ prompt: prompt, image: { bytesBase64Encoded: base64Image } }],
+            parameters: { sampleCount: 1, aspectRatio: '16:9' }
+          })
+        });
+      } else {
+        // Gemini generateContent with image output
+        response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=${geminiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{
+              parts: [
+                { inlineData: { mimeType: 'image/png', data: base64Image } },
+                { text: prompt }
+              ]
+            }],
+            generationConfig: {
+              responseModalities: ['IMAGE', 'TEXT'],
+            }
+          })
+        });
+      }
       
       if (!response.ok) {
         const err = await response.text();
-        throw new Error(`Gemini API error: ${response.status} — ${err}`);
+        throw new Error(`API error: ${response.status} — ${err}`);
       }
       
       const data = await response.json();
-      // Extract generated image from response
-      const parts = data.candidates?.[0]?.content?.parts ?? [];
-      const imagePart = parts.find((p: any) => p.inlineData?.mimeType?.startsWith('image/'));
-      if (imagePart) {
-        aiRenderResult = `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`;
+      
+      if (modelConfig?.isImagen) {
+        // Imagen response format
+        const predictions = data.predictions ?? [];
+        if (predictions.length > 0 && predictions[0].bytesBase64Encoded) {
+          aiRenderResult = `data:image/png;base64,${predictions[0].bytesBase64Encoded}`;
+        } else {
+          throw new Error('No image returned from Imagen.');
+        }
       } else {
-        throw new Error('No image returned from Gemini. The model may not support image generation with this prompt.');
+        // Gemini response format
+        const parts = data.candidates?.[0]?.content?.parts ?? [];
+        const imagePart = parts.find((p: any) => p.inlineData?.mimeType?.startsWith('image/'));
+        if (imagePart) {
+          aiRenderResult = `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`;
+        } else {
+          const textPart = parts.find((p: any) => p.text);
+          throw new Error(textPart?.text || 'No image returned. Try a different model.');
+        }
       }
     } catch (e: any) {
       alert(`AI Render failed: ${e.message}`);
