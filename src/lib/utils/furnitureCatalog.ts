@@ -69,6 +69,106 @@ export const furnitureCatalog: FurnitureDef[] = [
   { id: 'table_lamp', name: 'Table Lamp', category: 'Lighting', icon: '💡', color: '#fde68a', width: 25, depth: 25, height: 45 },
   { id: 'wall_sconce', name: 'Wall Sconce', category: 'Lighting', icon: '🔅', color: '#fef3c7', width: 15, depth: 10, height: 20 },
   { id: 'pendant_light', name: 'Pendant Light', category: 'Lighting', icon: '💡', color: '#fbbf24', width: 30, depth: 30, height: 30 },
+
+  // Outdoor Furniture
+  { id: 'patio_table', name: 'Patio Table', category: 'Outdoor Furniture', icon: '🪑', color: '#92400e', width: 120, depth: 120, height: 75 },
+  { id: 'patio_chair', name: 'Patio Chair', category: 'Outdoor Furniture', icon: '🪑', color: '#a16207', width: 55, depth: 55, height: 85 },
+  { id: 'bench_outdoor', name: 'Park Bench', category: 'Outdoor Furniture', icon: '🪑', color: '#78716c', width: 150, depth: 50, height: 80 },
+  { id: 'lounger', name: 'Sun Lounger', category: 'Outdoor Furniture', icon: '🛏️', color: '#d97706', width: 70, depth: 190, height: 35 },
+  { id: 'umbrella', name: 'Patio Umbrella', category: 'Outdoor Furniture', icon: '☂️', color: '#ef4444', width: 200, depth: 200, height: 230 },
+  { id: 'bbq_grill', name: 'BBQ Grill', category: 'Outdoor Furniture', icon: '🔥', color: '#374151', width: 80, depth: 50, height: 100 },
+  { id: 'fire_pit', name: 'Fire Pit', category: 'Outdoor Furniture', icon: '🔥', color: '#78716c', width: 90, depth: 90, height: 40 },
+  { id: 'campfire', name: 'Campfire', category: 'Outdoor Furniture', icon: '🏕️', color: '#b45309', width: 60, depth: 60, height: 30 },
+  { id: 'picnic_table', name: 'Picnic Table', category: 'Outdoor Furniture', icon: '🍽️', color: '#92400e', width: 180, depth: 140, height: 75 },
+  { id: 'tent', name: 'Tent', category: 'Outdoor Furniture', icon: '⛺', color: '#d4a373', width: 200, depth: 200, height: 140 },
+  { id: 'outdoor_sign', name: 'Sign', category: 'Outdoor Furniture', icon: '🪧', color: '#92400e', width: 40, depth: 10, height: 120 },
+  { id: 'outdoor_pot_large', name: 'Large Pot', category: 'Outdoor Furniture', icon: '🏺', color: '#b45309', width: 40, depth: 40, height: 35 },
+  { id: 'outdoor_pot_small', name: 'Small Pot', category: 'Outdoor Furniture', icon: '🏺', color: '#b45309', width: 25, depth: 25, height: 25 },
+
+  // Landscaping — Trees
+  { id: 'tree_oak', name: 'Oak Tree', category: 'Landscaping', icon: '🌳', color: '#166534', width: 300, depth: 300, height: 500 },
+  { id: 'tree_default', name: 'Deciduous Tree', category: 'Landscaping', icon: '🌳', color: '#15803d', width: 250, depth: 250, height: 450 },
+  { id: 'tree_detailed', name: 'Detailed Tree', category: 'Landscaping', icon: '🌳', color: '#14532d', width: 280, depth: 280, height: 480 },
+  { id: 'tree_pine', name: 'Pine Tree', category: 'Landscaping', icon: '🌲', color: '#065f46', width: 150, depth: 150, height: 500 },
+  { id: 'tree_pine_tall', name: 'Tall Pine', category: 'Landscaping', icon: '🌲', color: '#064e3b', width: 120, depth: 120, height: 600 },
+  { id: 'tree_palm', name: 'Palm Tree', category: 'Landscaping', icon: '🌴', color: '#16a34a', width: 200, depth: 200, height: 500 },
+  { id: 'tree_palm_bend', name: 'Bent Palm', category: 'Landscaping', icon: '🌴', color: '#22c55e', width: 200, depth: 200, height: 450 },
+  { id: 'tree_palm_tall', name: 'Tall Palm', category: 'Landscaping', icon: '🌴', color: '#4ade80', width: 150, depth: 150, height: 600 },
+  { id: 'tree_fat', name: 'Fat Tree', category: 'Landscaping', icon: '🌳', color: '#15803d', width: 350, depth: 350, height: 400 },
+  { id: 'tree_simple', name: 'Simple Tree', category: 'Landscaping', icon: '🌳', color: '#22c55e', width: 200, depth: 200, height: 350 },
+  { id: 'tree_thin', name: 'Thin Tree', category: 'Landscaping', icon: '🌳', color: '#166534', width: 100, depth: 100, height: 450 },
+  { id: 'tree_tall', name: 'Tall Tree', category: 'Landscaping', icon: '🌳', color: '#14532d', width: 200, depth: 200, height: 550 },
+  { id: 'tree_cone', name: 'Cone Tree', category: 'Landscaping', icon: '🌲', color: '#065f46', width: 150, depth: 150, height: 400 },
+  { id: 'tree_blocky', name: 'Blocky Tree', category: 'Landscaping', icon: '🌳', color: '#15803d', width: 200, depth: 200, height: 400 },
+  { id: 'tree_small', name: 'Small Tree', category: 'Landscaping', icon: '🌳', color: '#4ade80', width: 120, depth: 120, height: 250 },
+
+  // Landscaping — Bushes & Plants
+  { id: 'bush', name: 'Bush', category: 'Landscaping', icon: '🌿', color: '#22c55e', width: 80, depth: 80, height: 60 },
+  { id: 'bush_detailed', name: 'Detailed Bush', category: 'Landscaping', icon: '🌿', color: '#16a34a', width: 90, depth: 90, height: 70 },
+  { id: 'bush_large', name: 'Large Bush', category: 'Landscaping', icon: '🌿', color: '#15803d', width: 120, depth: 120, height: 90 },
+  { id: 'bush_large_triangle', name: 'Large Triangle Bush', category: 'Landscaping', icon: '🌿', color: '#166534', width: 120, depth: 120, height: 100 },
+  { id: 'bush_small', name: 'Small Bush', category: 'Landscaping', icon: '🌿', color: '#4ade80', width: 50, depth: 50, height: 40 },
+  { id: 'bush_triangle', name: 'Triangle Bush', category: 'Landscaping', icon: '🌿', color: '#22c55e', width: 80, depth: 80, height: 80 },
+  { id: 'hedge_row', name: 'Hedge Row', category: 'Landscaping', icon: '🌿', color: '#166534', width: 200, depth: 60, height: 120 },
+  { id: 'cactus_short', name: 'Short Cactus', category: 'Landscaping', icon: '🌵', color: '#4d7c0f', width: 30, depth: 30, height: 60 },
+  { id: 'cactus_tall', name: 'Tall Cactus', category: 'Landscaping', icon: '🌵', color: '#365314', width: 30, depth: 30, height: 120 },
+  { id: 'hanging_moss', name: 'Hanging Moss', category: 'Landscaping', icon: '🌿', color: '#86efac', width: 40, depth: 40, height: 80 },
+
+  // Landscaping — Flowers
+  { id: 'flower_purple', name: 'Purple Flower', category: 'Landscaping', icon: '🌸', color: '#a855f7', width: 20, depth: 20, height: 30 },
+  { id: 'flower_red', name: 'Red Flower', category: 'Landscaping', icon: '🌹', color: '#ef4444', width: 20, depth: 20, height: 30 },
+  { id: 'flower_yellow', name: 'Yellow Flower', category: 'Landscaping', icon: '🌻', color: '#eab308', width: 20, depth: 20, height: 30 },
+  { id: 'flower_purple_b', name: 'Purple Flower B', category: 'Landscaping', icon: '🌸', color: '#c084fc', width: 25, depth: 25, height: 35 },
+  { id: 'flower_red_b', name: 'Red Flower B', category: 'Landscaping', icon: '🌹', color: '#f87171', width: 25, depth: 25, height: 35 },
+  { id: 'flower_yellow_b', name: 'Yellow Flower B', category: 'Landscaping', icon: '🌻', color: '#facc15', width: 25, depth: 25, height: 35 },
+  { id: 'flower_bed', name: 'Flower Bed', category: 'Landscaping', icon: '🌺', color: '#f472b6', width: 100, depth: 40, height: 20 },
+  { id: 'lily', name: 'Water Lily', category: 'Landscaping', icon: '🪷', color: '#86efac', width: 30, depth: 30, height: 5 },
+
+  // Landscaping — Grass
+  { id: 'grass_tuft', name: 'Grass Tuft', category: 'Landscaping', icon: '🌾', color: '#84cc16', width: 30, depth: 30, height: 15 },
+  { id: 'grass_large', name: 'Large Grass', category: 'Landscaping', icon: '🌾', color: '#65a30d', width: 40, depth: 40, height: 25 },
+  { id: 'grass_leafs', name: 'Grass Leaves', category: 'Landscaping', icon: '🌾', color: '#4d7c0f', width: 30, depth: 30, height: 20 },
+  { id: 'grass_leafs_large', name: 'Large Grass Leaves', category: 'Landscaping', icon: '🌾', color: '#365314', width: 40, depth: 40, height: 30 },
+
+  // Landscaping — Rocks & Stones
+  { id: 'rock_large', name: 'Large Rock', category: 'Landscaping', icon: '🪨', color: '#78716c', width: 100, depth: 80, height: 60 },
+  { id: 'rock_large_b', name: 'Large Rock B', category: 'Landscaping', icon: '🪨', color: '#6b7280', width: 90, depth: 70, height: 55 },
+  { id: 'rock_tall', name: 'Tall Rock', category: 'Landscaping', icon: '🪨', color: '#57534e', width: 60, depth: 50, height: 100 },
+  { id: 'rock_small', name: 'Small Rock', category: 'Landscaping', icon: '🪨', color: '#a8a29e', width: 30, depth: 25, height: 20 },
+  { id: 'rock_small_b', name: 'Small Rock B', category: 'Landscaping', icon: '🪨', color: '#d6d3d1', width: 25, depth: 20, height: 18 },
+  { id: 'stone_large', name: 'Large Stone', category: 'Landscaping', icon: '🪨', color: '#9ca3af', width: 80, depth: 60, height: 50 },
+  { id: 'stone_tall', name: 'Tall Stone', category: 'Landscaping', icon: '🪨', color: '#6b7280', width: 50, depth: 40, height: 90 },
+  { id: 'boulder', name: 'Boulder', category: 'Landscaping', icon: '🪨', color: '#57534e', width: 150, depth: 120, height: 100 },
+
+  // Landscaping — Misc
+  { id: 'mushroom_red', name: 'Red Mushroom', category: 'Landscaping', icon: '🍄', color: '#dc2626', width: 20, depth: 20, height: 25 },
+  { id: 'mushroom_group', name: 'Mushroom Group', category: 'Landscaping', icon: '🍄', color: '#ef4444', width: 30, depth: 30, height: 20 },
+  { id: 'mushroom_tan', name: 'Tan Mushroom', category: 'Landscaping', icon: '🍄', color: '#d4a373', width: 20, depth: 20, height: 25 },
+  { id: 'log_single', name: 'Log', category: 'Landscaping', icon: '🪵', color: '#92400e', width: 30, depth: 100, height: 30 },
+  { id: 'log_large', name: 'Large Log', category: 'Landscaping', icon: '🪵', color: '#78350f', width: 40, depth: 120, height: 40 },
+  { id: 'log_stack', name: 'Log Stack', category: 'Landscaping', icon: '🪵', color: '#92400e', width: 80, depth: 60, height: 50 },
+  { id: 'stump_old', name: 'Old Stump', category: 'Landscaping', icon: '🪵', color: '#78350f', width: 40, depth: 40, height: 30 },
+  { id: 'stump_round', name: 'Round Stump', category: 'Landscaping', icon: '🪵', color: '#92400e', width: 35, depth: 35, height: 25 },
+  { id: 'corn', name: 'Corn Stalks', category: 'Landscaping', icon: '🌽', color: '#84cc16', width: 30, depth: 30, height: 120 },
+  { id: 'pumpkin', name: 'Pumpkin', category: 'Landscaping', icon: '🎃', color: '#ea580c', width: 30, depth: 30, height: 25 },
+  { id: 'statue_column', name: 'Column Statue', category: 'Landscaping', icon: '🏛️', color: '#d1d5db', width: 30, depth: 30, height: 200 },
+  { id: 'obelisk', name: 'Obelisk', category: 'Landscaping', icon: '🏛️', color: '#9ca3af', width: 40, depth: 40, height: 250 },
+
+  // Fencing
+  { id: 'fence_simple', name: 'Simple Fence', category: 'Fencing', icon: '🏗️', color: '#92400e', width: 200, depth: 10, height: 100 },
+  { id: 'fence_planks', name: 'Plank Fence', category: 'Fencing', icon: '🏗️', color: '#a16207', width: 200, depth: 10, height: 120 },
+  { id: 'fence_gate', name: 'Fence Gate', category: 'Fencing', icon: '🚪', color: '#78350f', width: 100, depth: 10, height: 100 },
+  { id: 'fence_corner', name: 'Fence Corner', category: 'Fencing', icon: '🏗️', color: '#92400e', width: 100, depth: 100, height: 100 },
+  { id: 'picket_fence', name: 'Picket Fence', category: 'Fencing', icon: '🏗️', color: '#fef3c7', width: 200, depth: 10, height: 90 },
+  { id: 'metal_fence', name: 'Metal Fence', category: 'Fencing', icon: '🏗️', color: '#374151', width: 200, depth: 10, height: 120 },
+
+  // Structures
+  { id: 'pergola', name: 'Pergola', category: 'Structures', icon: '🏗️', color: '#92400e', width: 300, depth: 300, height: 250 },
+  { id: 'deck_patio', name: 'Deck/Patio', category: 'Structures', icon: '🏗️', color: '#a16207', width: 400, depth: 300, height: 15 },
+  { id: 'raised_garden_bed', name: 'Raised Garden Bed', category: 'Structures', icon: '🌱', color: '#78350f', width: 120, depth: 60, height: 40 },
+  { id: 'shed', name: 'Garden Shed', category: 'Structures', icon: '🏠', color: '#78716c', width: 200, depth: 250, height: 230 },
+  { id: 'gazebo', name: 'Gazebo', category: 'Structures', icon: '🏗️', color: '#e5e7eb', width: 300, depth: 300, height: 280 },
+  { id: 'planter_box', name: 'Planter Box', category: 'Structures', icon: '🌱', color: '#92400e', width: 80, depth: 30, height: 30 },
 ];
 
 export function getCatalogItem(id: string): FurnitureDef | undefined {

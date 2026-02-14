@@ -198,6 +198,10 @@
     'Dining': '#f59e0b',
     'Decor': '#c2956b',
     'Lighting': '#fbbf24',
+    'Outdoor Furniture': '#92400e',
+    'Landscaping': '#16a34a',
+    'Fencing': '#78350f',
+    'Structures': '#6b7280',
   };
 </script>
 

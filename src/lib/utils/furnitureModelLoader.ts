@@ -70,6 +70,86 @@ const MODEL_MAP: Record<string, ModelMapping> = {
   // Decor
   potted_plant:   { file: 'pottedPlant', scale: 80 },
   floor_plant:    { file: 'plantSmall1', scale: 100 },
+
+  // Outdoor Furniture
+  fire_pit:       { file: 'outdoor_campfire_stones', scale: 100 },
+  campfire:       { file: 'outdoor_campfire_logs', scale: 100 },
+  tent:           { file: 'outdoor_tent_detailedOpen', scale: 100 },
+  outdoor_sign:   { file: 'outdoor_sign', scale: 100 },
+  outdoor_pot_large: { file: 'outdoor_pot_large', scale: 100 },
+  outdoor_pot_small: { file: 'outdoor_pot_small', scale: 100 },
+
+  // Landscaping — Trees
+  tree_oak:       { file: 'outdoor_tree_oak', scale: 100 },
+  tree_default:   { file: 'outdoor_tree_default', scale: 100 },
+  tree_detailed:  { file: 'outdoor_tree_detailed', scale: 100 },
+  tree_pine:      { file: 'outdoor_tree_pineRoundA', scale: 100 },
+  tree_pine_tall: { file: 'outdoor_tree_pineTallA_detailed', scale: 100 },
+  tree_palm:      { file: 'outdoor_tree_palm', scale: 100 },
+  tree_palm_bend: { file: 'outdoor_tree_palmBend', scale: 100 },
+  tree_palm_tall: { file: 'outdoor_tree_palmTall', scale: 100 },
+  tree_fat:       { file: 'outdoor_tree_fat', scale: 100 },
+  tree_simple:    { file: 'outdoor_tree_simple', scale: 100 },
+  tree_thin:      { file: 'outdoor_tree_thin', scale: 100 },
+  tree_tall:      { file: 'outdoor_tree_tall', scale: 100 },
+  tree_cone:      { file: 'outdoor_tree_cone', scale: 100 },
+  tree_blocky:    { file: 'outdoor_tree_blocks', scale: 100 },
+  tree_small:     { file: 'outdoor_tree_small', scale: 100 },
+
+  // Landscaping — Bushes & Plants
+  bush:           { file: 'outdoor_plant_bush', scale: 100 },
+  bush_detailed:  { file: 'outdoor_plant_bushDetailed', scale: 100 },
+  bush_large:     { file: 'outdoor_plant_bushLarge', scale: 100 },
+  bush_large_triangle: { file: 'outdoor_plant_bushLargeTriangle', scale: 100 },
+  bush_small:     { file: 'outdoor_plant_bushSmall', scale: 100 },
+  bush_triangle:  { file: 'outdoor_plant_bushTriangle', scale: 100 },
+  cactus_short:   { file: 'outdoor_cactus_short', scale: 100 },
+  cactus_tall:    { file: 'outdoor_cactus_tall', scale: 100 },
+  hanging_moss:   { file: 'outdoor_hanging_moss', scale: 100 },
+
+  // Landscaping — Flowers
+  flower_purple:  { file: 'outdoor_flower_purpleA', scale: 100 },
+  flower_red:     { file: 'outdoor_flower_redA', scale: 100 },
+  flower_yellow:  { file: 'outdoor_flower_yellowA', scale: 100 },
+  flower_purple_b: { file: 'outdoor_flower_purpleB', scale: 100 },
+  flower_red_b:   { file: 'outdoor_flower_redB', scale: 100 },
+  flower_yellow_b: { file: 'outdoor_flower_yellowB', scale: 100 },
+  lily:           { file: 'outdoor_lily_large', scale: 100 },
+
+  // Landscaping — Grass
+  grass_tuft:     { file: 'outdoor_grass', scale: 100 },
+  grass_large:    { file: 'outdoor_grass_large', scale: 100 },
+  grass_leafs:    { file: 'outdoor_grass_leafs', scale: 100 },
+  grass_leafs_large: { file: 'outdoor_grass_leafsLarge', scale: 100 },
+
+  // Landscaping — Rocks & Stones
+  rock_large:     { file: 'outdoor_rock_largeA', scale: 100 },
+  rock_large_b:   { file: 'outdoor_rock_largeB', scale: 100 },
+  rock_tall:      { file: 'outdoor_rock_tallA', scale: 100 },
+  rock_small:     { file: 'outdoor_rock_smallA', scale: 100 },
+  rock_small_b:   { file: 'outdoor_rock_smallB', scale: 100 },
+  stone_large:    { file: 'outdoor_stone_largeA', scale: 100 },
+  stone_tall:     { file: 'outdoor_stone_tallA', scale: 100 },
+
+  // Landscaping — Misc
+  mushroom_red:   { file: 'outdoor_mushroom_red', scale: 100 },
+  mushroom_group: { file: 'outdoor_mushroom_redGroup', scale: 100 },
+  mushroom_tan:   { file: 'outdoor_mushroom_tan', scale: 100 },
+  log_single:     { file: 'outdoor_log', scale: 100 },
+  log_large:      { file: 'outdoor_log_large', scale: 100 },
+  log_stack:      { file: 'outdoor_log_stack', scale: 100 },
+  stump_old:      { file: 'outdoor_stump_old', scale: 100 },
+  stump_round:    { file: 'outdoor_stump_round', scale: 100 },
+  corn:           { file: 'outdoor_crops_cornStageD', scale: 100 },
+  pumpkin:        { file: 'outdoor_crop_pumpkin', scale: 100 },
+  statue_column:  { file: 'outdoor_statue_column', scale: 100 },
+  obelisk:        { file: 'outdoor_statue_obelisk', scale: 100 },
+
+  // Fencing
+  fence_simple:   { file: 'outdoor_fence_simple', scale: 100 },
+  fence_planks:   { file: 'outdoor_fence_planks', scale: 100 },
+  fence_gate:     { file: 'outdoor_fence_gate', scale: 100 },
+  fence_corner:   { file: 'outdoor_fence_corner', scale: 100 },
 };
 
 /**

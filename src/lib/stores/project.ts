@@ -358,7 +358,7 @@ export function addFloor(name?: string, copyCurrentLayout = false) {
   if (!p) return;
   snapshot();
   const level = p.floors.length;
-  const floor: Floor = { id: uid(), name: name ?? `Floor ${level}`, level, walls: [], rooms: [], doors: [], windows: [], furniture: [], stairs: [] };
+  const floor: Floor = { id: uid(), name: name ?? `Floor ${level}`, level, walls: [], rooms: [], doors: [], windows: [], furniture: [], stairs: [], columns: [] };
   if (copyCurrentLayout) {
     const cur = p.floors.find(f => f.id === p.activeFloorId);
     if (cur) {

@@ -153,8 +153,8 @@ export function exportDXF(project: Project) {
   d.setActiveLayer('FURNITURE');
   for (const fi of floor.furniture) {
     const cat = getCatalogItem(fi.catalogId);
-    const fw = cat ? cat.width : 30;
-    const fd = cat ? cat.depth : 30;
+    const fw = fi.width ?? (cat ? cat.width : 30);
+    const fd = fi.depth ?? (cat ? cat.depth : 30);
     const fx = fi.position.x;
     const fy = -fi.position.y;
     const rot = (fi.rotation || 0) * Math.PI / 180;

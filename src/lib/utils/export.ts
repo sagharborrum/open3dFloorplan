@@ -91,9 +91,9 @@ export function exportAsSVG(project: Project) {
     const fx = fi.position.x - minX + pad;
     const fy = fi.position.y - minY + pad;
     const cat = getCatalogItem(fi.catalogId);
-    const fw = cat ? cat.width : 30;
-    const fd = cat ? cat.depth : 30;
-    const color = cat ? `#${cat.color.toString(16).padStart(6, '0')}` : '#a0c4e8';
+    const fw = fi.width ?? (cat ? cat.width : 30);
+    const fd = fi.depth ?? (cat ? cat.depth : 30);
+    const color = fi.color ?? (cat ? cat.color : '#a0c4e8');
     const rot = fi.rotation || 0;
     paths += `  <g transform="translate(${fx},${fy}) rotate(${rot})">\n`;
     paths += `    <rect x="${-fw / 2}" y="${-fd / 2}" width="${fw}" height="${fd}" fill="${color}" stroke="#555" stroke-width="0.5" rx="2" opacity="0.7"/>\n`;
