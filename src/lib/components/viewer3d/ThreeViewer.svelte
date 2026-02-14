@@ -213,7 +213,20 @@
     link.click();
   }
 
-  function moveCameraBy(dx: number, dz: number) {
+  /** Move camera in the XZ plane relative to current facing direction.
+   *  forward/right are in camera-local space (forward = facing dir, right = perpendicular). */
+  function moveCameraRelative(forward: number, right: number) {
+    const yawRad = cameraYaw * Math.PI / 180;
+    const cos = Math.cos(yawRad);
+    const sin = Math.sin(yawRad);
+    // Current facing direction (rotated baseDir by yaw)
+    const fwdX = cameraBaseDir.x * cos - cameraBaseDir.z * sin;
+    const fwdZ = cameraBaseDir.x * sin + cameraBaseDir.z * cos;
+    // Right is perpendicular to forward in XZ
+    const rightX = -fwdZ;
+    const rightZ = fwdX;
+    const dx = fwdX * forward + rightX * right;
+    const dz = fwdZ * forward + rightZ * right;
     cameraPosition = { ...cameraPosition, x: cameraPosition.x + dx, z: cameraPosition.z + dz };
     updateCameraMarkerFromState();
     cameraPreviewDirty = true;
@@ -2183,12 +2196,12 @@
       <!-- Movement arrows -->
       <div class="flex items-center justify-center gap-1 py-1.5 border-b border-gray-800">
         <span class="text-[10px] text-gray-500 mr-2">Move:</span>
-        <button class="w-7 h-7 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded text-xs flex items-center justify-center" onclick={() => moveCameraBy(-cameraBaseDir.z * 50, cameraBaseDir.x * 50)} title="Move left">←</button>
+        <button class="w-7 h-7 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded text-xs flex items-center justify-center" onclick={() => moveCameraRelative(0, -10)} title="Move left">←</button>
         <div class="flex flex-col gap-0.5">
-          <button class="w-7 h-7 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded text-xs flex items-center justify-center" onclick={() => moveCameraBy(cameraBaseDir.x * 50, cameraBaseDir.z * 50)} title="Move forward">↑</button>
-          <button class="w-7 h-7 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded text-xs flex items-center justify-center" onclick={() => moveCameraBy(-cameraBaseDir.x * 50, -cameraBaseDir.z * 50)} title="Move backward">↓</button>
+          <button class="w-7 h-7 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded text-xs flex items-center justify-center" onclick={() => moveCameraRelative(10, 0)} title="Move forward">↑</button>
+          <button class="w-7 h-7 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded text-xs flex items-center justify-center" onclick={() => moveCameraRelative(-10, 0)} title="Move backward">↓</button>
         </div>
-        <button class="w-7 h-7 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded text-xs flex items-center justify-center" onclick={() => moveCameraBy(cameraBaseDir.z * 50, -cameraBaseDir.x * 50)} title="Move right">→</button>
+        <button class="w-7 h-7 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded text-xs flex items-center justify-center" onclick={() => moveCameraRelative(0, 10)} title="Move right">→</button>
       </div>
 
       <div class="px-3 py-2 space-y-1.5">
