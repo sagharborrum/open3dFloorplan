@@ -103,6 +103,7 @@
   let cameraPitch = $state(0); // degrees, negative = look down, positive = look up
   let cameraBaseDir = { x: 1, z: 0 }; // normalized direction from position to lookAt
   let cameraPreviewDirty = $state(false);
+  let cameraXrayWalls = $state(false);
   let previewDragStart: { x: number; y: number; yaw: number; pitch: number } | null = null;
   let aiRenderOpen = $state(false);
   let aiRendering = $state(false);
@@ -331,6 +332,26 @@
     interiorCamera.updateProjectionMatrix();
   }
 
+  /** Set wall meshes to transparent/opaque for x-ray preview */
+  function setWallsXray(xray: boolean) {
+    if (!wallGroup) return;
+    wallGroup.traverse((obj) => {
+      if (obj instanceof THREE.Mesh && wallMeshMap.has(obj)) {
+        const mat = obj.material as THREE.MeshStandardMaterial;
+        if (xray) {
+          mat.transparent = true;
+          mat.opacity = 0.15;
+          mat.depthWrite = false;
+        } else {
+          mat.transparent = false;
+          mat.opacity = 1;
+          mat.depthWrite = true;
+        }
+        mat.needsUpdate = true;
+      }
+    });
+  }
+
   /** Hide/show all label sprites in the scene (room names, etc.) */
   function setSpritesVisible(visible: boolean) {
     if (!scene) return;
@@ -357,11 +378,13 @@
     // Hide camera marker and room labels during capture
     if (cameraHelper) cameraHelper.visible = false;
     setSpritesVisible(false);
+    if (cameraXrayWalls) setWallsXray(true);
 
     offRenderer.render(scene, interiorCamera);
 
     if (cameraHelper) cameraHelper.visible = true;
     setSpritesVisible(true);
+    if (cameraXrayWalls) setWallsXray(false);
 
     const dataUrl = offRenderer.domElement.toDataURL('image/png');
     offRenderer.dispose();
@@ -391,9 +414,11 @@
 
     if (cameraHelper) cameraHelper.visible = false;
     setSpritesVisible(false);
+    if (cameraXrayWalls) setWallsXray(true);
     cameraPreviewRenderer.render(scene, interiorCamera);
     if (cameraHelper) cameraHelper.visible = true;
     setSpritesVisible(true);
+    if (cameraXrayWalls) setWallsXray(false);
     cameraPreviewDirty = false;
   }
 
@@ -2220,6 +2245,10 @@
               oninput={() => { cameraPreviewDirty = true; }} />
             <span class="w-10 text-right">{cameraHeight}cm</span>
           </div>
+        </label>
+        <label class="flex items-center gap-2 text-xs text-gray-300 cursor-pointer select-none">
+          <input type="checkbox" bind:checked={cameraXrayWalls} class="accent-blue-400" onchange={() => { cameraPreviewDirty = true; }} />
+          <span>X-ray walls (see through)</span>
         </label>
         <div class="flex gap-2 pt-1">
           <button
