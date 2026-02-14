@@ -64,6 +64,81 @@
   let sprintSpeed = $state(1600); // cm/s
   let eyeHeight = $state(160); // cm
 
+  // Lighting controls state
+  let lightingPanelOpen = $state(false);
+  let sunAzimuth = $state(135);      // 0-360 degrees
+  let sunElevation = $state(60);     // 0-90 degrees
+  let ambientIntensity = $state(0.35);
+  let timeOfDay = $state<'morning' | 'noon' | 'evening' | 'night' | null>(null);
+
+  // Light references
+  let ambientLight: THREE.AmbientLight;
+  let hemiLight: THREE.HemisphereLight;
+  let sunLight: THREE.DirectionalLight;
+  let fillLight: THREE.DirectionalLight;
+  let rimLight: THREE.DirectionalLight;
+  let skyCanvas: HTMLCanvasElement;
+  let skyTexture: THREE.CanvasTexture;
+
+  const TIME_PRESETS = {
+    morning: { azimuth: 90, elevation: 25, ambient: 0.3, sunColor: 0xffe0a0, sunIntensity: 0.8, skyTop: '#f5a86c', skyMid: '#fdd89b', skyHorizon: '#ffe8c0', hemiSky: '#fdd89b', hemiGround: '#9b8060' },
+    noon:    { azimuth: 180, elevation: 80, ambient: 0.45, sunColor: 0xffffff, sunIntensity: 1.2, skyTop: '#3a7bd5', skyMid: '#87ceeb', skyHorizon: '#c8e8f8', hemiSky: '#87ceeb', hemiGround: '#8b7355' },
+    evening: { azimuth: 270, elevation: 15, ambient: 0.2, sunColor: 0xff8040, sunIntensity: 0.6, skyTop: '#2d1b69', skyMid: '#c84e3c', skyHorizon: '#f4a460', hemiSky: '#c84e3c', hemiGround: '#4a3520' },
+    night:   { azimuth: 0, elevation: 5, ambient: 0.08, sunColor: 0x8899cc, sunIntensity: 0.15, skyTop: '#0a0a2e', skyMid: '#141432', skyHorizon: '#1a1a3e', hemiSky: '#141432', hemiGround: '#0a0a15' },
+  };
+
+  function updateSunPosition() {
+    if (!sunLight) return;
+    const azRad = (sunAzimuth * Math.PI) / 180;
+    const elRad = (sunElevation * Math.PI) / 180;
+    const dist = 1500;
+    sunLight.position.set(
+      dist * Math.cos(elRad) * Math.sin(azRad),
+      dist * Math.sin(elRad),
+      dist * Math.cos(elRad) * Math.cos(azRad)
+    );
+  }
+
+  function updateAmbientIntensity() {
+    if (ambientLight) ambientLight.intensity = ambientIntensity;
+  }
+
+  function updateSkyGradient(topColor: string, midColor: string, horizonColor: string) {
+    if (!skyCanvas || !skyTexture) return;
+    const cx = skyCanvas.getContext('2d')!;
+    const grad = cx.createLinearGradient(0, 0, 0, 512);
+    grad.addColorStop(0, topColor);
+    grad.addColorStop(0.4, midColor);
+    grad.addColorStop(0.55, horizonColor);
+    grad.addColorStop(0.7, '#d4cfc4');
+    grad.addColorStop(1.0, '#b8b0a0');
+    cx.fillStyle = grad;
+    cx.fillRect(0, 0, 4, 512);
+    skyTexture.needsUpdate = true;
+  }
+
+  function applyTimePreset(preset: 'morning' | 'noon' | 'evening' | 'night') {
+    const p = TIME_PRESETS[preset];
+    timeOfDay = preset;
+    sunAzimuth = p.azimuth;
+    sunElevation = p.elevation;
+    ambientIntensity = p.ambient;
+    updateSunPosition();
+    updateAmbientIntensity();
+    if (sunLight) {
+      sunLight.color.set(p.sunColor);
+      sunLight.intensity = p.sunIntensity;
+    }
+    if (hemiLight) {
+      hemiLight.color.set(p.hemiSky);
+      hemiLight.groundColor.set(p.hemiGround);
+      hemiLight.intensity = preset === 'night' ? 0.1 : 0.4;
+    }
+    if (fillLight) fillLight.intensity = preset === 'night' ? 0.05 : 0.4;
+    if (rimLight) rimLight.intensity = preset === 'night' ? 0.05 : 0.25;
+    updateSkyGradient(p.skyTop, p.skyMid, p.skyHorizon);
+  }
+
   const WALL_THICKNESS = 15;
   const BASEBOARD_HEIGHT = 8;
 
@@ -96,20 +171,20 @@
     scene = new THREE.Scene();
 
     // Sky gradient background (larger for better quality)
-    const c = document.createElement('canvas');
-    c.width = 4; c.height = 512;
-    const cx = c.getContext('2d')!;
+    skyCanvas = document.createElement('canvas');
+    skyCanvas.width = 4; skyCanvas.height = 512;
+    const cx = skyCanvas.getContext('2d')!;
     const grad = cx.createLinearGradient(0, 0, 0, 512);
-    grad.addColorStop(0, '#4a90d9');    // deeper sky blue at zenith
-    grad.addColorStop(0.3, '#87ceeb');  // sky blue
-    grad.addColorStop(0.5, '#b8ddf0');  // pale horizon
-    grad.addColorStop(0.55, '#f0ece4'); // warm horizon line
-    grad.addColorStop(0.7, '#d4cfc4');  // muted ground far
-    grad.addColorStop(1.0, '#b8b0a0'); // ground near
+    grad.addColorStop(0, '#4a90d9');
+    grad.addColorStop(0.3, '#87ceeb');
+    grad.addColorStop(0.5, '#b8ddf0');
+    grad.addColorStop(0.55, '#f0ece4');
+    grad.addColorStop(0.7, '#d4cfc4');
+    grad.addColorStop(1.0, '#b8b0a0');
     cx.fillStyle = grad;
     cx.fillRect(0, 0, 4, 512);
-    const bgTex = new THREE.CanvasTexture(c);
-    scene.background = bgTex;
+    skyTexture = new THREE.CanvasTexture(skyCanvas);
+    scene.background = skyTexture;
 
     // Ground plane (extends beyond building)
     const groundGeo = new THREE.PlaneGeometry(20000, 20000);
@@ -219,33 +294,33 @@
     });
 
     // Lights — improved multi-source setup
-    const ambient = new THREE.AmbientLight(0xffffff, 0.35);
-    scene.add(ambient);
-    const hemi = new THREE.HemisphereLight(0x87ceeb, 0x8b7355, 0.4);
-    scene.add(hemi);
+    ambientLight = new THREE.AmbientLight(0xffffff, 0.35);
+    scene.add(ambientLight);
+    hemiLight = new THREE.HemisphereLight(0x87ceeb, 0x8b7355, 0.4);
+    scene.add(hemiLight);
 
     // Key light (sun)
-    const dir = new THREE.DirectionalLight(0xfff8e7, 1.0);
-    dir.position.set(500, 1200, 800);
-    dir.castShadow = true;
-    dir.shadow.mapSize.width = 2048;
-    dir.shadow.mapSize.height = 2048;
-    dir.shadow.camera.left = -1500;
-    dir.shadow.camera.right = 1500;
-    dir.shadow.camera.top = 1500;
-    dir.shadow.camera.bottom = -1500;
-    dir.shadow.bias = -0.0005;
-    scene.add(dir);
+    sunLight = new THREE.DirectionalLight(0xfff8e7, 1.0);
+    sunLight.position.set(500, 1200, 800);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.width = 2048;
+    sunLight.shadow.mapSize.height = 2048;
+    sunLight.shadow.camera.left = -1500;
+    sunLight.shadow.camera.right = 1500;
+    sunLight.shadow.camera.top = 1500;
+    sunLight.shadow.camera.bottom = -1500;
+    sunLight.shadow.bias = -0.0005;
+    scene.add(sunLight);
 
     // Fill light — softer, opposite side to reduce harsh shadows
-    const fill = new THREE.DirectionalLight(0xc8d8f0, 0.4);
-    fill.position.set(-600, 800, -400);
-    scene.add(fill);
+    fillLight = new THREE.DirectionalLight(0xc8d8f0, 0.4);
+    fillLight.position.set(-600, 800, -400);
+    scene.add(fillLight);
 
     // Rim/back light for depth
-    const rim = new THREE.DirectionalLight(0xffe4c4, 0.25);
-    rim.position.set(-200, 600, 1000);
-    scene.add(rim);
+    rimLight = new THREE.DirectionalLight(0xffe4c4, 0.25);
+    rimLight.position.set(-200, 600, 1000);
+    scene.add(rimLight);
 
     // Textured floor
     const floorTex = createFloorTexture();
@@ -1556,5 +1631,71 @@
       screenY={materialPickerPos.y}
       onclose={() => { materialPickerWall = null; materialPickerPos = null; }}
     />
+  {/if}
+
+  <!-- Lighting Controls Toggle Button -->
+  <button
+    onclick={() => { lightingPanelOpen = !lightingPanelOpen; }}
+    class="absolute bottom-4 left-4 z-50 p-2 rounded-lg transition-colors {lightingPanelOpen ? 'bg-amber-500 text-white ring-2 ring-amber-300' : 'bg-black/70 text-white hover:bg-black/80'}"
+    title="Lighting Controls"
+    aria-label="Lighting Controls"
+  >
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="5"/>
+      <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+      <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+    </svg>
+  </button>
+
+  <!-- Lighting Controls Panel -->
+  {#if lightingPanelOpen}
+    <div class="absolute bottom-14 left-4 z-50 bg-black/80 text-white text-xs rounded-lg backdrop-blur-sm p-3 space-y-3 min-w-[220px] select-none">
+      <div class="font-semibold text-white/90 text-sm flex items-center gap-1.5">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/></svg>
+        Lighting Controls
+      </div>
+
+      <!-- Time of Day Presets -->
+      <div class="space-y-1">
+        <span class="text-white/60 text-[10px] uppercase tracking-wide">Time of Day</span>
+        <div class="flex gap-1">
+          {#each (['morning', 'noon', 'evening', 'night'] as const) as preset}
+            <button
+              onclick={() => applyTimePreset(preset)}
+              class="flex-1 px-1.5 py-1 rounded text-[11px] transition-colors {timeOfDay === preset ? 'bg-amber-500 text-white' : 'bg-white/10 hover:bg-white/20 text-white/80'}"
+            >
+              {preset === 'morning' ? '🌅' : preset === 'noon' ? '☀️' : preset === 'evening' ? '🌇' : '🌙'}
+              <span class="block capitalize">{preset}</span>
+            </button>
+          {/each}
+        </div>
+      </div>
+
+      <!-- Sun Position -->
+      <label class="block space-y-0.5">
+        <div class="flex justify-between text-white/60">
+          <span>Sun Position</span><span>{sunAzimuth}°</span>
+        </div>
+        <input type="range" min="0" max="360" bind:value={sunAzimuth} oninput={() => { timeOfDay = null; updateSunPosition(); }} class="w-full h-1 accent-amber-400" />
+      </label>
+
+      <!-- Sun Elevation -->
+      <label class="block space-y-0.5">
+        <div class="flex justify-between text-white/60">
+          <span>Sun Elevation</span><span>{sunElevation}°</span>
+        </div>
+        <input type="range" min="0" max="90" bind:value={sunElevation} oninput={() => { timeOfDay = null; updateSunPosition(); }} class="w-full h-1 accent-amber-400" />
+      </label>
+
+      <!-- Ambient Intensity -->
+      <label class="block space-y-0.5">
+        <div class="flex justify-between text-white/60">
+          <span>Ambient Light</span><span>{Math.round(ambientIntensity * 100)}%</span>
+        </div>
+        <input type="range" min="0" max="100" value={Math.round(ambientIntensity * 100)} oninput={(e) => { ambientIntensity = parseInt(e.currentTarget.value) / 100; timeOfDay = null; updateAmbientIntensity(); }} class="w-full h-1 accent-blue-400" />
+      </label>
+    </div>
   {/if}
 </div>

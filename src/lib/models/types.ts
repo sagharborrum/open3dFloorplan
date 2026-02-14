@@ -18,6 +18,8 @@ export interface Wall {
   exteriorTexture?: string;
 }
 
+export type RoomCategory = 'indoor' | 'outdoor' | 'garage' | 'utility';
+
 export interface Room {
   id: string;
   name: string;
@@ -25,6 +27,7 @@ export interface Room {
   floorTexture: string;
   area: number;
   color?: string;
+  roomType?: RoomCategory;
 }
 
 export interface Door {

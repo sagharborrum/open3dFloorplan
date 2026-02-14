@@ -3,7 +3,7 @@
   import { floorMaterials, wallColors } from '$lib/utils/materials';
   import { getCatalogItem } from '$lib/utils/furnitureCatalog';
   import { projectSettings, formatLength, formatArea } from '$lib/stores/settings';
-  import type { Floor, Wall, Door, Window as Win, Room, FurnitureItem, Stair, Column } from '$lib/models/types';
+  import type { Floor, Wall, Door, Window as Win, Room, FurnitureItem, Stair, Column, RoomCategory } from '$lib/models/types';
 
   let floor: Floor | null = $state(null);
   let selId: string | null = $state(null);
@@ -651,6 +651,15 @@
       <label class="block">
         <span class="text-xs text-gray-500">Room Name</span>
         <input type="text" value={selectedRoom.name} oninput={onRoomName} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
+      </label>
+      <label class="block">
+        <span class="text-xs text-gray-500">Category</span>
+        <select value={selectedRoom.roomType ?? 'indoor'} onchange={(e) => { if (selectedRoom) { const v = (e.target as HTMLSelectElement).value as RoomCategory; updateRoom(selectedRoom.id, { roomType: v }); updateDetectedRoom(selectedRoom.id, { roomType: v } as any); } }} class="w-full px-2 py-1 border border-gray-200 rounded text-sm">
+          <option value="indoor">🏠 Indoor</option>
+          <option value="outdoor">🌳 Outdoor</option>
+          <option value="garage">🚗 Garage</option>
+          <option value="utility">🔧 Utility</option>
+        </select>
       </label>
       <div>
         <span class="text-xs text-gray-500">Area</span>
