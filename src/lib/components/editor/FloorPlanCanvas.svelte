@@ -3139,6 +3139,31 @@
     // Text annotations
     if (floor) drawTextAnnotations(floor);
 
+    // Rotation angle tooltip while dragging rotation handle
+    if (draggingHandle === 'rotate' && currentSelectedId && currentFloor) {
+      const fi = currentFloor.furniture.find(f => f.id === currentSelectedId);
+      if (fi) {
+        const sp = worldToScreen(fi.position.x, fi.position.y);
+        const rotAngle = Math.round(fi.rotation);
+        const label = `${rotAngle}°`;
+        const fontSize = 13;
+        ctx.font = `bold ${fontSize}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const tw = ctx.measureText(label).width;
+        const pw = tw + 14;
+        const ph = fontSize + 10;
+        const tx = sp.x;
+        const ty = sp.y - 50;
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath();
+        ctx.roundRect(tx - pw / 2, ty - ph / 2, pw, ph, 4);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(label, tx, ty);
+      }
+    }
+
     // Drag preview ghost
     if (dragPreview) {
       const dp = dragPreview;
@@ -4116,8 +4141,10 @@
             const dx = mousePos.x - fi.position.x;
             const dy = mousePos.y - fi.position.y;
             let angle = Math.atan2(dx, -dy) * 180 / Math.PI; // 0° = up
-            // Snap to 15° increments
-            angle = Math.round(angle / 15) * 15;
+            // Hold Shift to snap to 15° increments; otherwise free rotation
+            if (shiftDown) {
+              angle = Math.round(angle / 15) * 15;
+            }
             setFurnitureRotation(currentSelectedId, ((angle % 360) + 360) % 360);
           } else {
             // Resize: compute delta in furniture-local coords
