@@ -234,6 +234,23 @@
     return match ? match.id : 'custom';
   });
 
+  const floorTexPaths: Record<string, string> = {
+    'light-oak': '/textures/floor-light-oak.jpg', 'walnut': '/textures/floor-walnut.jpg',
+    'bamboo': '/textures/floor-bamboo.jpg', 'laminate': '/textures/floor-laminate.jpg',
+    'ceramic-white': '/textures/floor-tile-white.jpg', 'ceramic-gray': '/textures/floor-tile-gray.jpg',
+    'porcelain': '/textures/floor-porcelain.jpg',
+    'marble-white': '/textures/floor-marble-white.jpg', 'marble-dark': '/textures/floor-marble-dark.jpg',
+    'carpet-beige': '/textures/floor-carpet-beige.jpg', 'carpet-gray': '/textures/floor-carpet-gray.jpg',
+    'concrete': '/textures/floor-concrete.jpg', 'slate': '/textures/floor-slate.jpg',
+    'vinyl': '/textures/floor-vinyl.jpg',
+  };
+  const textureGroups = [
+    { label: '🪵 Wood', ids: ['light-oak', 'walnut', 'bamboo', 'laminate'] },
+    { label: '🔲 Tile', ids: ['ceramic-white', 'ceramic-gray', 'porcelain', 'vinyl'] },
+    { label: '🪨 Stone', ids: ['marble-white', 'marble-dark', 'concrete', 'slate'] },
+    { label: '🧶 Carpet', ids: ['carpet-beige', 'carpet-gray'] },
+  ];
+
   let hasSelection = $derived(!!selectedWall || !!selectedDoor || !!selectedWindow || !!selectedFurniture || !!selectedRoom || !!selectedStair || !!selectedColumn || (!is3D && hasBgImage));
 </script>
 
@@ -615,29 +632,30 @@
             <path d="M8 8h8v8H8z"/>
           </svg>
         </div>
-        <div class="grid grid-cols-3 gap-2">
-          {#each floorMaterials as mat}
-            {@const floorTexPath = {
-              'light-oak': '/textures/floor-light-oak.jpg', 'walnut': '/textures/floor-walnut.jpg',
-              'bamboo': '/textures/floor-bamboo.jpg', 'laminate': '/textures/floor-laminate.jpg',
-              'ceramic-white': '/textures/floor-tile-white.jpg', 'ceramic-gray': '/textures/floor-tile-gray.jpg',
-              'porcelain': '/textures/floor-porcelain.jpg',
-              'marble-white': '/textures/floor-marble-white.jpg', 'marble-dark': '/textures/floor-marble-dark.jpg',
-              'carpet-beige': '/textures/floor-carpet-beige.jpg', 'carpet-gray': '/textures/floor-carpet-gray.jpg',
-              'concrete': '/textures/floor-concrete.jpg', 'slate': '/textures/floor-slate.jpg',
-              'vinyl': '/textures/floor-vinyl.jpg',
-            }[mat.id] ?? ''}
-            <button
-              class="p-1.5 rounded-lg border-2 hover:border-gray-300 transition-colors text-xs {selectedRoom.floorTexture === mat.id ? 'border-blue-500 ring-1 ring-blue-200' : 'border-gray-200'}"
-              title={mat.name}
-              onclick={() => onRoomFloor(mat.id)}
-            >
-              <div
-                class="w-full h-10 rounded-md mb-1 overflow-hidden"
-                style={floorTexPath ? `background-image: url(${floorTexPath}); background-size: cover; background-position: center;` : `background-color: ${mat.color}`}
-              ></div>
-              <div class="text-center leading-3">{mat.name}</div>
-            </button>
+        <div class="space-y-3">
+          {#each textureGroups as group}
+            <div>
+              <span class="text-xs font-medium text-gray-600 mb-1.5 block">{group.label}</span>
+              <div class="grid grid-cols-3 gap-1.5">
+                {#each group.ids as matId}
+                  {@const mat = floorMaterials.find(m => m.id === matId)}
+                  {#if mat}
+                    {@const texPath = floorTexPaths[mat.id] ?? ''}
+                    <button
+                      class="p-1 rounded-lg border-2 hover:border-gray-300 transition-all text-xs {selectedRoom.floorTexture === mat.id ? 'border-blue-500 ring-2 ring-blue-200 shadow-sm' : 'border-gray-200'}"
+                      title={mat.name}
+                      onclick={() => onRoomFloor(mat.id)}
+                    >
+                      <div
+                        class="w-full h-12 rounded-md mb-1 overflow-hidden"
+                        style={texPath ? `background-image: url(${texPath}); background-size: cover; background-position: center;` : `background-color: ${mat.color}`}
+                      ></div>
+                      <div class="text-center leading-3 text-[10px] text-gray-600 truncate">{mat.name}</div>
+                    </button>
+                  {/if}
+                {/each}
+              </div>
+            </div>
           {/each}
         </div>
       </div>
