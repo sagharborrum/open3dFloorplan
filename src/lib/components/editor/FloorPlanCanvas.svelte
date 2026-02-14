@@ -3929,14 +3929,42 @@
 
   function onWheel(e: WheelEvent) {
     e.preventDefault();
-    if (currentPlacingId) {
+    if (currentPlacingId && !e.ctrlKey) {
       // Rotate furniture preview
       const delta = e.deltaY > 0 ? 15 : -15;
       placingRotation.update(r => (r + delta) % 360);
       return;
     }
-    const factor = e.deltaY > 0 ? 0.9 : 1.1;
-    zoom = Math.max(0.1, Math.min(10, zoom * factor));
+
+    const rect = canvas.getBoundingClientRect();
+    const sx = e.clientX - rect.left;
+    const sy = e.clientY - rect.top;
+
+    if (e.ctrlKey) {
+      // Pinch-to-zoom on trackpad (or Ctrl+scroll)
+      const factor = e.deltaY > 0 ? 0.95 : 1.05;
+      const newZoom = Math.max(0.1, Math.min(10, zoom * factor));
+      // Zoom towards cursor position
+      const worldX = (sx - width / 2) / zoom + camX;
+      const worldY = (sy - height / 2) / zoom + camY;
+      camX = worldX - (sx - width / 2) / newZoom;
+      camY = worldY - (sy - height / 2) / newZoom;
+      zoom = newZoom;
+    } else if (Math.abs(e.deltaX) > 0) {
+      // Two-finger trackpad pan (deltaX present means trackpad gesture)
+      camX += e.deltaX / zoom;
+      camY += e.deltaY / zoom;
+    } else {
+      // Regular scroll wheel: zoom towards cursor
+      const factor = e.deltaY > 0 ? 0.9 : 1.1;
+      const newZoom = Math.max(0.1, Math.min(10, zoom * factor));
+      // Zoom towards cursor position
+      const worldX = (sx - width / 2) / zoom + camX;
+      const worldY = (sy - height / 2) / zoom + camY;
+      camX = worldX - (sx - width / 2) / newZoom;
+      camY = worldY - (sy - height / 2) / newZoom;
+      zoom = newZoom;
+    }
   }
 
   function onKeyDown(e: KeyboardEvent) {
@@ -4658,6 +4686,46 @@
       Right-click two points to measure · M to exit · Esc to cancel
     </div>
   {/if}
+
+  <!-- Zoom Controls (bottom-left) -->
+  <div class="absolute bottom-3 left-3 z-20 flex items-center gap-1 bg-white rounded-lg shadow-lg border border-gray-200 px-1 py-0.5">
+    <button
+      class="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-100 text-gray-600 hover:text-gray-800 font-bold text-lg"
+      title="Zoom Out (−)"
+      aria-label="Zoom out"
+      onclick={() => {
+        const newZoom = Math.max(0.1, zoom * 0.8);
+        // Zoom towards canvas center
+        const worldCX = (width / 2 - width / 2) / zoom + camX;
+        const worldCY = (height / 2 - height / 2) / zoom + camY;
+        camX = worldCX - (width / 2 - width / 2) / newZoom;
+        camY = worldCY - (height / 2 - height / 2) / newZoom;
+        zoom = newZoom;
+      }}
+    >−</button>
+    <button
+      class="min-w-[3.5rem] h-7 flex items-center justify-center rounded hover:bg-gray-100 text-xs font-medium text-gray-600 hover:text-gray-800 tabular-nums"
+      title="Reset to 100%"
+      aria-label="Zoom to 100%"
+      onclick={() => { zoom = 1; }}
+    >{Math.round(zoom * 100)}%</button>
+    <button
+      class="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-100 text-gray-600 hover:text-gray-800 font-bold text-lg"
+      title="Zoom In (+)"
+      aria-label="Zoom in"
+      onclick={() => {
+        const newZoom = Math.min(10, zoom * 1.25);
+        zoom = newZoom;
+      }}
+    >+</button>
+    <div class="w-px h-5 bg-gray-200"></div>
+    <button
+      class="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-100 text-gray-500 hover:text-gray-700 text-sm"
+      title="Zoom to Fit (F)"
+      aria-label="Zoom to fit"
+      onclick={() => zoomToFit()}
+    >⊞</button>
+  </div>
 
   <!-- Context Menu -->
   <ContextMenu
