@@ -1,4 +1,4 @@
-import { selectedTool, undo, redo, viewMode, selectedElementId, selectedElementIds, removeElement, panMode } from '$lib/stores/project';
+import { selectedTool, undo, redo, viewMode, selectedElementId, selectedElementIds, removeElement, panMode, beginUndoGroup, endUndoGroup } from '$lib/stores/project';
 import { get } from 'svelte/store';
 import { localStore } from '$lib/services/datastore';
 import { currentProject } from '$lib/stores/project';
@@ -47,7 +47,9 @@ export function handleGlobalShortcut(e: KeyboardEvent, ctx: ShortcutContext = {}
   if (e.key === 'Delete' || e.key === 'Backspace') {
     const multiIds = get(selectedElementIds);
     if (multiIds.size > 0) {
+      beginUndoGroup();
       for (const id of multiIds) removeElement(id);
+      endUndoGroup();
       selectedElementIds.set(new Set());
       selectedElementId.set(null);
     } else {

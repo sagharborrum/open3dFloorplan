@@ -57,7 +57,7 @@
       <!-- Header -->
       <div class="flex items-center justify-between px-5 pt-4 pb-2">
         <h2 class="text-lg font-bold text-gray-800">Settings</h2>
-        <button class="text-gray-400 hover:text-gray-600 text-xl leading-none" onclick={close}>✕</button>
+        <button class="text-gray-400 hover:text-gray-600 text-xl leading-none" onclick={close} aria-label="Close settings">✕</button>
       </div>
 
       <!-- Tabs -->
@@ -179,12 +179,14 @@
                   class="w-8 h-8 rounded border-2 transition-colors {settings.dimensionLineColor === '#ffffff' ? 'border-slate-600' : 'border-gray-200'}"
                   style="background-color: #ffffff"
                   onclick={() => updateSetting('dimensionLineColor', '#ffffff')}
+                  aria-label="White line color"
                 ></button>
                 <span class="text-gray-300">|</span>
                 <button
                   class="w-8 h-8 rounded border-2 transition-colors {settings.dimensionLineColor === '#1e293b' ? 'border-slate-600' : 'border-gray-200'}"
                   style="background-color: #1e293b"
                   onclick={() => updateSetting('dimensionLineColor', '#1e293b')}
+                  aria-label="Dark line color"
                 ></button>
               </div>
             </div>

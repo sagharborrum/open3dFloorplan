@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { activeFloor, selectedTool, selectedElementId, selectedElementIds, selectedRoomId, addWall, addDoor, addWindow, updateWall, moveWallEndpoint, updateDoor, updateWindow, addFurniture, moveFurniture, commitFurnitureMove, rotateFurniture, setFurnitureRotation, scaleFurniture, removeElement, placingFurnitureId, placingRotation, placingDoorType, placingWindowType, detectedRoomsStore, duplicateDoor, duplicateWindow, duplicateFurniture, duplicateWall, moveWallParallel, splitWall, snapEnabled, placingStair, addStair, moveStair, updateStair, placingColumn, placingColumnShape, addColumn, moveColumn, updateColumn, calibrationMode, calibrationPoints, updateBackgroundImage, canvasZoom, canvasCamX, canvasCamY, panMode, showFurnitureStore, addGuide, moveGuide, removeGuide } from '$lib/stores/project';
+  import { activeFloor, selectedTool, selectedElementId, selectedElementIds, selectedRoomId, addWall, addDoor, addWindow, updateWall, moveWallEndpoint, updateDoor, updateWindow, addFurniture, moveFurniture, commitFurnitureMove, rotateFurniture, setFurnitureRotation, scaleFurniture, removeElement, placingFurnitureId, placingRotation, placingDoorType, placingWindowType, detectedRoomsStore, duplicateDoor, duplicateWindow, duplicateFurniture, duplicateWall, moveWallParallel, splitWall, snapEnabled, placingStair, addStair, moveStair, updateStair, placingColumn, placingColumnShape, addColumn, moveColumn, updateColumn, calibrationMode, calibrationPoints, updateBackgroundImage, canvasZoom, canvasCamX, canvasCamY, panMode, showFurnitureStore, addGuide, moveGuide, removeGuide, beginUndoGroup, endUndoGroup } from '$lib/stores/project';
   import type { Point, Wall, Door, Window as Win, FurnitureItem, Stair, Column, GuideLine } from '$lib/models/types';
   import type { Floor, Room } from '$lib/models/types';
   import { detectRooms, getRoomPolygon, roomCentroid } from '$lib/utils/roomDetection';
@@ -3474,6 +3474,7 @@
     if ((e.ctrlKey || e.metaKey) && e.key === 'v' && !e.shiftKey) {
       if (clipboard && clipboard.items.length > 0 && currentFloor) {
         e.preventDefault();
+        beginUndoGroup();
         const newIds: string[] = [];
         // We need to duplicate each clipboard item by its stored ID
         // For successive pastes, update clipboard to point to the new IDs
@@ -3500,6 +3501,7 @@
         }
         // Update clipboard for successive pastes
         if (newItems.length > 0) clipboard = { items: newItems };
+        endUndoGroup();
         if (newIds.length === 1) {
           selectedElementId.set(newIds[0]);
           selectedElementIds.set(new Set());
@@ -3678,6 +3680,8 @@
   <canvas
     bind:this={canvas}
     class="block w-full h-full"
+    tabindex="0"
+    aria-label="Floor plan editor canvas"
     style="cursor: {cursorStyle}"
     onmousedown={onMouseDown}
     onmousemove={onMouseMove}
@@ -3825,6 +3829,7 @@
         <button
           class="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-100 text-gray-500 hover:text-gray-700"
           title="Duplicate"
+          aria-label="Duplicate"
           onclick={() => {
             if (!currentSelectedId || !currentFloor) return;
             let newId: string | null = null;
@@ -3841,6 +3846,7 @@
           <button
             class="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-100 text-gray-500 hover:text-gray-700"
             title="Flip swing"
+            aria-label="Flip swing"
             onclick={() => { if (el.door) updateDoor(el.door.id, { swingDirection: el.door.swingDirection === 'left' ? 'right' : 'left' }); }}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
@@ -3850,6 +3856,7 @@
           <button
             class="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-100 text-gray-500 hover:text-gray-700"
             title="Split wall at midpoint"
+            aria-label="Split wall at midpoint"
             onclick={() => {
               if (currentSelectedId) {
                 const newId = splitWall(currentSelectedId, 0.5);
@@ -3864,9 +3871,12 @@
         <button
           class="w-7 h-7 flex items-center justify-center rounded hover:bg-red-50 text-gray-400 hover:text-red-600"
           title="Delete"
+          aria-label="Delete"
           onclick={() => {
             if (currentSelectedIds.size > 0) {
+              beginUndoGroup();
               for (const id of currentSelectedIds) removeElement(id);
+              endUndoGroup();
               selectedElementIds.set(new Set());
               selectedElementId.set(null);
             } else if (currentSelectedId) {

@@ -1138,6 +1138,7 @@
     onclick={viewTopDown}
     class="absolute top-4 right-52 z-50 bg-black/70 text-white p-2 rounded-lg hover:bg-black/80 transition-colors"
     title="Top-Down View"
+    aria-label="Top-Down View"
   >
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <circle cx="12" cy="12" r="10"/>
@@ -1153,6 +1154,7 @@
     onclick={toggleWallTransparency}
     class="absolute top-4 right-40 z-50 p-2 rounded-lg transition-colors {wallsTransparent ? 'bg-blue-600 text-white ring-2 ring-blue-300' : 'bg-black/70 text-white hover:bg-black/80'}"
     title={wallsTransparent ? 'Show Solid Walls' : 'Make Walls Transparent'}
+    aria-label={wallsTransparent ? 'Show Solid Walls' : 'Make Walls Transparent'}
   >
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <rect x="3" y="3" width="18" height="18" rx="2" opacity={wallsTransparent ? 0.3 : 1}/>
@@ -1166,6 +1168,7 @@
     onclick={() => { editMode = !editMode; if (editMode && walkthroughMode) { exitWalkthroughMode(); } if (!editMode) selectedElementId.set(null); }}
     class="absolute top-4 right-28 z-50 p-2 rounded-lg transition-colors {editMode ? 'bg-blue-600 text-white ring-2 ring-blue-300' : 'bg-black/70 text-white hover:bg-black/80'}"
     title={editMode ? 'Exit Edit Mode' : 'Edit Mode — click to select walls & change materials'}
+    aria-label={editMode ? 'Exit Edit Mode' : 'Edit Mode'}
   >
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -1178,6 +1181,7 @@
     onclick={takeScreenshot}
     class="absolute top-4 right-16 z-50 bg-black/70 text-white p-2 rounded-lg hover:bg-black/80 transition-colors"
     title="Save 3D Screenshot"
+    aria-label="Save 3D Screenshot"
   >
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
@@ -1190,6 +1194,7 @@
     onclick={toggleWalkthroughMode}
     class="absolute top-4 right-4 z-50 bg-black/70 text-white p-2 rounded-lg hover:bg-black/80 transition-colors"
     title={walkthroughMode ? 'Exit Walkthrough Mode' : 'Enter Walkthrough Mode'}
+    aria-label={walkthroughMode ? 'Exit Walkthrough Mode' : 'Enter Walkthrough Mode'}
   >
     {#if walkthroughMode}
       <!-- Exit/Eye closed icon -->

@@ -1,5 +1,5 @@
 import type { Point } from '$lib/models/types';
-import { addWall } from '$lib/stores/project';
+import { addWall, beginUndoGroup, endUndoGroup } from '$lib/stores/project';
 
 export interface RoomPreset {
   id: string;
@@ -93,10 +93,12 @@ export function placePreset(preset: RoomPreset, origin: Point, w = 400, h = 300)
   }
   const cx = (minX + maxX) / 2;
   const cy = (minY + maxY) / 2;
+  beginUndoGroup();
   for (const wall of walls) {
     addWall(
       { x: origin.x + wall.start.x - cx, y: origin.y + wall.start.y - cy },
       { x: origin.x + wall.end.x - cx, y: origin.y + wall.end.y - cy }
     );
   }
+  endUndoGroup();
 }

@@ -45,7 +45,34 @@ export const viewMode = writable<'2d' | '3d'>('2d');
 const undoStack: string[] = [];
 const redoStack: string[] = [];
 
+// Undo grouping: batch multiple mutations into a single undo entry
+let undoGroupSnapshot: string | null = null;
+let undoGroupDepth = 0;
+
+/** Begin an undo group. Nested calls are supported; only the outermost pair takes effect. */
+export function beginUndoGroup() {
+  if (undoGroupDepth === 0) {
+    const p = get(currentProject);
+    if (p) undoGroupSnapshot = JSON.stringify(p);
+  }
+  undoGroupDepth++;
+}
+
+/** End an undo group. Commits a single undo entry from the state captured at beginUndoGroup(). */
+export function endUndoGroup() {
+  if (undoGroupDepth <= 0) return;
+  undoGroupDepth--;
+  if (undoGroupDepth === 0 && undoGroupSnapshot !== null) {
+    undoStack.push(undoGroupSnapshot);
+    if (undoStack.length > 50) undoStack.shift();
+    redoStack.length = 0;
+    undoGroupSnapshot = null;
+  }
+}
+
 function snapshot() {
+  // If inside an undo group, skip — the group handles the snapshot
+  if (undoGroupDepth > 0) return;
   const p = get(currentProject);
   if (p) undoStack.push(JSON.stringify(p));
   if (undoStack.length > 50) undoStack.shift();

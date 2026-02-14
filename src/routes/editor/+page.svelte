@@ -80,6 +80,7 @@
     class="fixed bottom-4 left-4 w-8 h-8 rounded-full bg-slate-700 text-white text-sm font-bold shadow-lg hover:bg-slate-600 transition-colors z-50"
     onclick={() => showHelp = !showHelp}
     title="Keyboard Shortcuts (?)"
+    aria-label="Keyboard Shortcuts"
   >?</button>
 
   <!-- Shortcuts overlay -->
@@ -89,7 +90,7 @@
       <div class="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full mx-4" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="document">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-lg font-bold text-slate-800">Keyboard Shortcuts</h2>
-          <button class="text-gray-400 hover:text-gray-600 text-xl" onclick={() => showHelp = false}>✕</button>
+          <button class="text-gray-400 hover:text-gray-600 text-xl" onclick={() => showHelp = false} aria-label="Close shortcuts">✕</button>
         </div>
         <div class="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
           <div class="font-semibold text-gray-400 col-span-2 mt-2 mb-1 uppercase text-xs">Tools</div>
