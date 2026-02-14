@@ -3572,7 +3572,7 @@
     <button class="hover:text-gray-700" onclick={() => projectSettings.update(s => ({ ...s, snapToGrid: !s.snapToGrid }))} title="Toggle Snap to Grid (S)">
       {currentSnapToGrid ? '🧲' : '↔'} Snap
     </button>
-    <button class="hover:text-gray-700" onclick={() => showFurnitureStore.update(v => !v)} title="Toggle Furniture">
+    <button class="hover:text-gray-700" onclick={() => layerVisibility.update(v => ({ ...v, furniture: !v.furniture }))} title="Toggle Furniture">
       {showFurniture ? '🪑' : '👻'} Furniture
     </button>
     <button class="hover:text-gray-700" onclick={() => showLayerPanel = !showLayerPanel} title="Layer Visibility">

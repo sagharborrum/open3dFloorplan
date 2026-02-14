@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { currentProject, viewMode, undo, redo, addFloor, removeFloor, setActiveFloor, updateProjectName, loadProject, createDefaultProject, snapEnabled, canvasZoom, panMode, showFurnitureStore, importFloorIntoCurrentProject } from '$lib/stores/project';
+  import { currentProject, viewMode, undo, redo, addFloor, removeFloor, setActiveFloor, updateProjectName, loadProject, createDefaultProject, snapEnabled, canvasZoom, panMode, showFurnitureStore, layerVisibility, importFloorIntoCurrentProject } from '$lib/stores/project';
   import { localStore } from '$lib/services/datastore';
   import { get } from 'svelte/store';
   import type { Floor, Project } from '$lib/models/types';
@@ -315,7 +315,7 @@
 
   <!-- Furniture visibility toggle -->
   <button
-    onclick={() => showFurnitureStore.update(v => !v)}
+    onclick={() => layerVisibility.update(v => ({ ...v, furniture: !v.furniture }))}
     class="p-1.5 rounded transition-colors {$showFurnitureStore ? 'text-white bg-white/20' : 'text-white/40 hover:text-white/70 hover:bg-white/10'}"
     title="Toggle Furniture ({$showFurnitureStore ? 'Visible' : 'Hidden'})"
     aria-label="Toggle Furniture"
