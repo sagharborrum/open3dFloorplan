@@ -528,6 +528,7 @@ export function splitWall(id: string, t: number): string | null {
   if (!floor) return null;
   const w = floor.walls.find((w) => w.id === id);
   if (!w || w.curvePoint) return null; // don't split curved walls
+  if (t <= 0.001 || t >= 0.999) return null; // prevent division by zero at extremes
   snapshot();
   const midPt: Point = {
     x: w.start.x + (w.end.x - w.start.x) * t,

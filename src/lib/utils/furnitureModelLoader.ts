@@ -213,7 +213,8 @@ function scaleToFit(model: THREE.Group, def: FurnitureDef, mapping: ModelMapping
   const size = new THREE.Vector3();
   box.getSize(size);
 
-  if (size.x === 0 || size.y === 0 || size.z === 0) return;
+  const EPSILON = 0.001;
+  if (size.x < EPSILON || size.y < EPSILON || size.z < EPSILON) return;
 
   // Detect Z-up orientation: only rotate if Y is near-zero (truly flat/degenerate)
   // Don't rotate models that are just naturally short (like beds, tables)
@@ -268,8 +269,15 @@ export function createFurnitureModelWithGLB(
     loadGLBModel(catalogId).then((glbModel) => {
       if (glbModel) {
         try {
-          // Remove procedural, add GLB
+          // Remove procedural and dispose its resources, then add GLB
           container.remove(procedural);
+          procedural.traverse((obj: any) => {
+            if (obj.geometry) obj.geometry.dispose();
+            if (obj.material) {
+              if (Array.isArray(obj.material)) obj.material.forEach((m: any) => m.dispose());
+              else obj.material.dispose();
+            }
+          });
           scaleToFit(glbModel, def, mapping);
           container.add(glbModel);
           onLoaded?.(container);

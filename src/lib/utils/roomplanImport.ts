@@ -546,6 +546,8 @@ export function importRoomPlan(jsonData: any, options: RoomPlanImportOptions = {
 
   // Process walls
   for (const rw of rpWalls) {
+    if (!rw.dimensions || rw.dimensions.length < 2 || !rw.transform || rw.transform.length < 16) continue;
+    if (!isFinite(rw.dimensions[0]) || !isFinite(rw.dimensions[1])) continue;
     const pos = getPosition(rw.transform);
     const angle = getYRotation(rw.transform);
     const halfWidth = (rw.dimensions[0] / 2) * 100; // cm
@@ -590,6 +592,7 @@ export function importRoomPlan(jsonData: any, options: RoomPlanImportOptions = {
 
   // Process doors
   for (const rd of rpDoors) {
+    if (!rd.dimensions || rd.dimensions.length < 2 || !rd.transform || rd.transform.length < 16) continue;
     const parentWallId = rd.parentIdentifier ? wallIdMap.get(rd.parentIdentifier) : undefined;
     if (!parentWallId) continue;
 
@@ -614,6 +617,7 @@ export function importRoomPlan(jsonData: any, options: RoomPlanImportOptions = {
 
   // Process windows
   for (const rw of rpWindows) {
+    if (!rw.dimensions || rw.dimensions.length < 2 || !rw.transform || rw.transform.length < 16) continue;
     const parentWallId = rw.parentIdentifier ? wallIdMap.get(rw.parentIdentifier) : undefined;
     if (!parentWallId) continue;
 
@@ -637,6 +641,7 @@ export function importRoomPlan(jsonData: any, options: RoomPlanImportOptions = {
 
   // Process objects (furniture)
   for (const ro of rpObjects) {
+    if (!ro.dimensions || ro.dimensions.length < 3 || !ro.transform || ro.transform.length < 16) continue;
     const pos = getPosition(ro.transform);
     const angle = getYRotation(ro.transform);
     const catalogId = mapFurnitureCatalogId(ro.category, ro.dimensions);
