@@ -3421,7 +3421,14 @@
 
   let cursorStyle = $derived(
     spaceDown || isPanning || $panMode || (shiftDown && currentTool === 'select') ? 'grab' :
+    draggingFurnitureId ? 'move' :
     draggingRoomId ? 'move' :
+    draggingMultiSelect ? 'move' :
+    draggingDoorId ? 'move' :
+    draggingWindowId ? 'move' :
+    draggingStairId ? 'move' :
+    draggingColumnId ? 'move' :
+    draggingTextAnnotationId ? 'move' :
     draggingWallParallel ? 'move' :
     draggingCurveHandle ? 'crosshair' :
     draggingWallEndpoint ? 'crosshair' :
