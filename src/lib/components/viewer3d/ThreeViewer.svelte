@@ -642,6 +642,26 @@
     }
   }
 
+  function buildColumns(floor: Floor) {
+    if (!floor.columns) return;
+    for (const col of floor.columns) {
+      const h = col.height || 280;
+      const d = col.diameter || 30;
+      let geo: THREE.BufferGeometry;
+      if (col.shape === 'square') {
+        geo = new THREE.BoxGeometry(d, h, d);
+      } else {
+        geo = new THREE.CylinderGeometry(d / 2, d / 2, h, 24);
+      }
+      const mat = new THREE.MeshStandardMaterial({ color: col.color || '#cccccc', roughness: 0.7 });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(col.position.x, h / 2, col.position.y);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      wallGroup.add(mesh);
+    }
+  }
+
   function clearGroup(group: THREE.Group) {
     while (group.children.length) {
       const child = group.children[0];
@@ -1146,6 +1166,9 @@
     // Stairs
     buildStairs(floor);
 
+    // Columns
+    buildColumns(floor);
+
     autoCenterCamera(floor);
   }
 
@@ -1283,6 +1306,26 @@
       slab.position.set((minX + maxX) / 2, yOffset, (minZ + maxZ) / 2);
       slab.receiveShadow = true;
       group.add(slab);
+    }
+
+    // Columns
+    if (floor.columns) {
+      for (const col of floor.columns) {
+        const h = col.height || 280;
+        const d = col.diameter || 30;
+        let geo: THREE.BufferGeometry;
+        if (col.shape === 'square') {
+          geo = new THREE.BoxGeometry(d, h, d);
+        } else {
+          geo = new THREE.CylinderGeometry(d / 2, d / 2, h, 24);
+        }
+        const mat = new THREE.MeshStandardMaterial({ color: col.color || '#cccccc', roughness: 0.7, transparent: true, opacity });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(col.position.x, h / 2 + yOffset, col.position.y);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        group.add(mesh);
+      }
     }
   }
   
