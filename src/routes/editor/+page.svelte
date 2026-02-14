@@ -96,6 +96,8 @@
           <div class="text-gray-600">Select tool</div><div class="font-mono text-slate-800">V</div>
           <div class="text-gray-600">Wall tool</div><div class="font-mono text-slate-800">W</div>
           <div class="text-gray-600">Door tool</div><div class="font-mono text-slate-800">D</div>
+          <div class="text-gray-600">Door tool</div><div class="font-mono text-slate-800">D</div>
+          <div class="text-gray-600">Pan mode</div><div class="font-mono text-slate-800">H</div>
           <div class="text-gray-600">Delete selected</div><div class="font-mono text-slate-800">Del / Backspace</div>
 
           <div class="font-semibold text-gray-400 col-span-2 mt-3 mb-1 uppercase text-xs">Canvas</div>
@@ -110,6 +112,7 @@
           <div class="text-gray-600">Redo</div><div class="font-mono text-slate-800">Ctrl+Y</div>
           <div class="text-gray-600">Rotate furniture</div><div class="font-mono text-slate-800">R / Scroll</div>
           <div class="text-gray-600">Cancel action</div><div class="font-mono text-slate-800">Esc</div>
+          <div class="text-gray-600">Toggle 2D/3D</div><div class="font-mono text-slate-800">Tab</div>
 
           <div class="font-semibold text-gray-400 col-span-2 mt-3 mb-1 uppercase text-xs">Walls</div>
           <div class="text-gray-600">Finish wall chain</div><div class="font-mono text-slate-800">Double-click</div>

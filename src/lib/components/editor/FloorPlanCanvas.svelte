@@ -3320,6 +3320,16 @@
     ondragleave={onDragLeave}
     ondrop={onDrop}
   ></canvas>
+  <!-- Empty state hint -->
+  {#if currentFloor && currentFloor.walls.length === 0 && currentFloor.furniture.length === 0 && currentFloor.doors.length === 0}
+    <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+      <div class="text-center opacity-60">
+        <div class="text-5xl mb-3">🏠</div>
+        <div class="text-sm font-medium text-gray-500">Start building your floor plan</div>
+        <div class="text-xs text-gray-400 mt-1">Draw walls with <span class="font-mono bg-gray-100 px-1 rounded">W</span> or drag items from the sidebar</div>
+      </div>
+    </div>
+  {/if}
   <div class="absolute bottom-2 right-2 bg-white/80 rounded px-2 py-1 text-xs text-gray-500 flex gap-3">
     {#if detectedRooms.length > 0}
       <span>{detectedRooms.length} room{detectedRooms.length !== 1 ? 's' : ''}</span>
@@ -3328,6 +3338,15 @@
     {/if}
     {#if currentFloor}
       <span>{currentFloor.walls.length} wall{currentFloor.walls.length !== 1 ? 's' : ''}</span>
+      {#if currentFloor.doors.length > 0}
+        <span>{currentFloor.doors.length} door{currentFloor.doors.length !== 1 ? 's' : ''}</span>
+      {/if}
+      {#if currentFloor.windows.length > 0}
+        <span>{currentFloor.windows.length} window{currentFloor.windows.length !== 1 ? 's' : ''}</span>
+      {/if}
+      {#if currentFloor.furniture.length > 0}
+        <span>{currentFloor.furniture.length} object{currentFloor.furniture.length !== 1 ? 's' : ''}</span>
+      {/if}
       <span class="text-gray-300">|</span>
     {/if}
     {#if currentSelectedIds.size > 1}

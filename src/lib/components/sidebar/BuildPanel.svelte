@@ -208,9 +208,9 @@
     'Dining': '#f59e0b',
     'Decor': '#c2956b',
     'Lighting': '#fbbf24',
-    'Outdoor Furniture': '#92400e',
+    'Outdoor Furniture': '#b45309',
     'Landscaping': '#16a34a',
-    'Fencing': '#78350f',
+    'Fencing': '#a16207',
     'Structures': '#6b7280',
   };
 </script>
@@ -400,7 +400,7 @@
           bind:value={search}
         />
         <!-- Category filter -->
-        <div class="flex flex-wrap gap-1">
+        <div class="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
           <button
             class="px-2 py-0.5 rounded-full text-[10px] font-medium {selectedCategory === 'All' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}"
             onclick={() => selectedCategory = 'All'}
