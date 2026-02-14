@@ -114,6 +114,14 @@
   const STYLE_OPTIONS = ['photorealistic', 'architectural visualization', 'interior design magazine', 'minimalist', 'scandinavian', 'industrial', 'mid-century modern', 'luxury'];
   const LIGHTING_OPTIONS = ['natural daylight', 'warm afternoon', 'golden hour', 'soft ambient', 'dramatic shadows', 'bright and airy', 'moody evening', 'studio lighting'];
   const MOOD_OPTIONS = ['warm and inviting', 'clean and modern', 'cozy', 'elegant', 'rustic charm', 'sophisticated', 'relaxed', 'vibrant'];
+  let aiModel = $state('gemini-2.5-flash');
+  const AI_MODELS = [
+    { id: 'gemini-3-pro', name: 'Gemini 3 Pro', desc: 'Most intelligent — best multimodal & visuals' },
+    { id: 'gemini-3-flash', name: 'Gemini 3 Flash', desc: 'Balanced — speed + frontier intelligence' },
+    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', desc: 'Best price-performance, fast' },
+    { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash-Lite', desc: 'Ultra fast, cost-efficient' },
+    { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', desc: 'Advanced thinking & reasoning' },
+  ];
 
   function buildAIPrompt(): string {
     let prompt = `Transform this interior 3D floor plan render into a ${aiRenderStyle} image. `;
@@ -157,7 +165,7 @@
       const prompt = buildAIPrompt();
       
       // Call Gemini API with image
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${geminiKey}`, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=${geminiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -2194,6 +2202,13 @@
       {#if aiRenderOpen}
         <div class="border-t border-gray-700 px-3 py-3 space-y-2">
           <div class="text-xs font-medium text-white">✨ AI Photorealistic Render</div>
+
+          <label class="block">
+            <span class="text-[10px] text-gray-400 block mb-1">Model</span>
+            <select bind:value={aiModel} class="w-full bg-gray-800 text-gray-200 text-xs rounded px-1.5 py-1.5 border border-gray-700">
+              {#each AI_MODELS as m}<option value={m.id}>{m.name} — {m.desc}</option>{/each}
+            </select>
+          </label>
           
           <div class="grid grid-cols-3 gap-2">
             <label class="block">
