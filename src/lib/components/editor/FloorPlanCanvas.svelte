@@ -1064,34 +1064,189 @@
     ctx.closePath();
     ctx.fill();
 
-    // Three parallel lines (outer two = wall edges, middle = glass pane)
+    const winType = win.type || 'standard';
     const gap = Math.max(2, thickness * 0.25);
-    ctx.strokeStyle = '#555';
-    ctx.lineWidth = 1.5;
-    // Outer line 1
-    ctx.beginPath();
-    ctx.moveTo(s.x - ux * hw + nx * gap, s.y - uy * hw + ny * gap);
-    ctx.lineTo(s.x + ux * hw + nx * gap, s.y + uy * hw + ny * gap);
-    ctx.stroke();
-    // Outer line 2
-    ctx.beginPath();
-    ctx.moveTo(s.x - ux * hw - nx * gap, s.y - uy * hw - ny * gap);
-    ctx.lineTo(s.x + ux * hw - nx * gap, s.y + uy * hw - ny * gap);
-    ctx.stroke();
-    // Middle glass line
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(s.x - ux * hw, s.y - uy * hw);
-    ctx.lineTo(s.x + ux * hw, s.y + uy * hw);
-    ctx.stroke();
-    // Connecting end caps
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(s.x - ux * hw + nx * gap, s.y - uy * hw + ny * gap);
-    ctx.lineTo(s.x - ux * hw - nx * gap, s.y - uy * hw - ny * gap);
-    ctx.moveTo(s.x + ux * hw + nx * gap, s.y + uy * hw + ny * gap);
-    ctx.lineTo(s.x + ux * hw - nx * gap, s.y + uy * hw - ny * gap);
-    ctx.stroke();
+
+    if (winType === 'bay') {
+      // Bay window: angled projection (3 segments forming a shallow trapezoid)
+      const bayDepth = gap * 3;
+      const sideW = hw * 0.3; // side panel width along wall
+      const centerW = hw - sideW; // center panel half-width
+
+      ctx.strokeStyle = '#555';
+      ctx.lineWidth = 1.5;
+
+      // Left angled segment
+      const lOuter = { x: s.x - ux * hw, y: s.y - uy * hw };
+      const lInner = { x: s.x - ux * centerW + nx * bayDepth, y: s.y - uy * centerW + ny * bayDepth };
+      ctx.beginPath();
+      ctx.moveTo(lOuter.x, lOuter.y);
+      ctx.lineTo(lInner.x, lInner.y);
+      ctx.stroke();
+
+      // Center segment (parallel to wall, pushed out)
+      const rInner = { x: s.x + ux * centerW + nx * bayDepth, y: s.y + uy * centerW + ny * bayDepth };
+      ctx.beginPath();
+      ctx.moveTo(lInner.x, lInner.y);
+      ctx.lineTo(rInner.x, rInner.y);
+      ctx.stroke();
+
+      // Right angled segment
+      const rOuter = { x: s.x + ux * hw, y: s.y + uy * hw };
+      ctx.beginPath();
+      ctx.moveTo(rInner.x, rInner.y);
+      ctx.lineTo(rOuter.x, rOuter.y);
+      ctx.stroke();
+
+      // Glass lines (thinner, inside each segment)
+      ctx.strokeStyle = '#99c';
+      ctx.lineWidth = 1;
+      const inset = 0.3;
+      // Left glass
+      ctx.beginPath();
+      ctx.moveTo(lOuter.x + (lInner.x - lOuter.x) * inset, lOuter.y + (lInner.y - lOuter.y) * inset);
+      ctx.lineTo(lInner.x - (lInner.x - lOuter.x) * inset, lInner.y - (lInner.y - lOuter.y) * inset);
+      ctx.stroke();
+      // Center glass
+      ctx.beginPath();
+      ctx.moveTo(lInner.x + (rInner.x - lInner.x) * 0.05, lInner.y + (rInner.y - lInner.y) * 0.05);
+      ctx.lineTo(rInner.x - (rInner.x - lInner.x) * 0.05, rInner.y - (rInner.y - lInner.y) * 0.05);
+      ctx.stroke();
+      // Right glass
+      ctx.beginPath();
+      ctx.moveTo(rInner.x + (rOuter.x - rInner.x) * inset, rInner.y + (rOuter.y - rInner.y) * inset);
+      ctx.lineTo(rOuter.x - (rOuter.x - rInner.x) * inset, rOuter.y - (rOuter.y - rInner.y) * inset);
+      ctx.stroke();
+
+    } else if (winType === 'sliding') {
+      // Sliding window: two overlapping panes with arrow
+      ctx.strokeStyle = '#555';
+      ctx.lineWidth = 1.5;
+      const offset = gap * 0.4;
+      // Pane 1 (left half, slightly above center)
+      ctx.beginPath();
+      ctx.moveTo(s.x - ux * hw + nx * offset, s.y - uy * hw + ny * offset);
+      ctx.lineTo(s.x + ux * hw * 0.1 + nx * offset, s.y + uy * hw * 0.1 + ny * offset);
+      ctx.stroke();
+      // Pane 2 (right half, slightly below center)
+      ctx.beginPath();
+      ctx.moveTo(s.x - ux * hw * 0.1 - nx * offset, s.y - uy * hw * 0.1 - ny * offset);
+      ctx.lineTo(s.x + ux * hw - nx * offset, s.y + uy * hw - ny * offset);
+      ctx.stroke();
+      // End caps
+      ctx.lineWidth = 1;
+      for (const side of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(s.x + ux * hw * side + nx * gap, s.y + uy * hw * side + ny * gap);
+        ctx.lineTo(s.x + ux * hw * side - nx * gap, s.y + uy * hw * side - ny * gap);
+        ctx.stroke();
+      }
+      // Arrow showing slide direction
+      ctx.strokeStyle = '#999';
+      ctx.lineWidth = 1;
+      const aOff = gap * 1.5;
+      const ax1 = s.x - ux * hw * 0.3 + nx * aOff;
+      const ay1 = s.y - uy * hw * 0.3 + ny * aOff;
+      const ax2 = s.x + ux * hw * 0.3 + nx * aOff;
+      const ay2 = s.y + uy * hw * 0.3 + ny * aOff;
+      ctx.beginPath();
+      ctx.moveTo(ax1, ay1);
+      ctx.lineTo(ax2, ay2);
+      ctx.stroke();
+      // Arrowhead
+      ctx.beginPath();
+      ctx.moveTo(ax2 - ux * 5 + nx * 3, ay2 - uy * 5 + ny * 3);
+      ctx.lineTo(ax2, ay2);
+      ctx.lineTo(ax2 - ux * 5 - nx * 3, ay2 - uy * 5 - ny * 3);
+      ctx.stroke();
+
+    } else if (winType === 'fixed') {
+      // Fixed window: simple rectangle, no opening indicator
+      ctx.strokeStyle = '#555';
+      ctx.lineWidth = 1.5;
+      // Outer rectangle
+      ctx.beginPath();
+      ctx.moveTo(s.x - ux * hw + nx * gap, s.y - uy * hw + ny * gap);
+      ctx.lineTo(s.x + ux * hw + nx * gap, s.y + uy * hw + ny * gap);
+      ctx.lineTo(s.x + ux * hw - nx * gap, s.y + uy * hw - ny * gap);
+      ctx.lineTo(s.x - ux * hw - nx * gap, s.y - uy * hw - ny * gap);
+      ctx.closePath();
+      ctx.stroke();
+      // X cross to indicate fixed
+      ctx.strokeStyle = '#aab';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(s.x - ux * hw + nx * gap, s.y - uy * hw + ny * gap);
+      ctx.lineTo(s.x + ux * hw - nx * gap, s.y + uy * hw - ny * gap);
+      ctx.moveTo(s.x + ux * hw + nx * gap, s.y + uy * hw + ny * gap);
+      ctx.lineTo(s.x - ux * hw - nx * gap, s.y - uy * hw - ny * gap);
+      ctx.stroke();
+
+    } else if (winType === 'casement') {
+      // Casement: like standard but with a small triangle indicating swing direction
+      ctx.strokeStyle = '#555';
+      ctx.lineWidth = 1.5;
+      // Outer line 1
+      ctx.beginPath();
+      ctx.moveTo(s.x - ux * hw + nx * gap, s.y - uy * hw + ny * gap);
+      ctx.lineTo(s.x + ux * hw + nx * gap, s.y + uy * hw + ny * gap);
+      ctx.stroke();
+      // Outer line 2
+      ctx.beginPath();
+      ctx.moveTo(s.x - ux * hw - nx * gap, s.y - uy * hw - ny * gap);
+      ctx.lineTo(s.x + ux * hw - nx * gap, s.y + uy * hw - ny * gap);
+      ctx.stroke();
+      // Middle glass line
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(s.x - ux * hw, s.y - uy * hw);
+      ctx.lineTo(s.x + ux * hw, s.y + uy * hw);
+      ctx.stroke();
+      // End caps
+      ctx.beginPath();
+      ctx.moveTo(s.x - ux * hw + nx * gap, s.y - uy * hw + ny * gap);
+      ctx.lineTo(s.x - ux * hw - nx * gap, s.y - uy * hw - ny * gap);
+      ctx.moveTo(s.x + ux * hw + nx * gap, s.y + uy * hw + ny * gap);
+      ctx.lineTo(s.x + ux * hw - nx * gap, s.y + uy * hw - ny * gap);
+      ctx.stroke();
+      // Swing triangle (indicates casement opens outward)
+      ctx.strokeStyle = '#88a';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(s.x - ux * hw + nx * gap, s.y - uy * hw + ny * gap);
+      ctx.lineTo(s.x + nx * gap * 2.5, s.y + ny * gap * 2.5);
+      ctx.lineTo(s.x + ux * hw + nx * gap, s.y + uy * hw + ny * gap);
+      ctx.stroke();
+
+    } else {
+      // Standard / default: three parallel lines with end caps
+      ctx.strokeStyle = '#555';
+      ctx.lineWidth = 1.5;
+      // Outer line 1
+      ctx.beginPath();
+      ctx.moveTo(s.x - ux * hw + nx * gap, s.y - uy * hw + ny * gap);
+      ctx.lineTo(s.x + ux * hw + nx * gap, s.y + uy * hw + ny * gap);
+      ctx.stroke();
+      // Outer line 2
+      ctx.beginPath();
+      ctx.moveTo(s.x - ux * hw - nx * gap, s.y - uy * hw - ny * gap);
+      ctx.lineTo(s.x + ux * hw - nx * gap, s.y + uy * hw - ny * gap);
+      ctx.stroke();
+      // Middle glass line
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(s.x - ux * hw, s.y - uy * hw);
+      ctx.lineTo(s.x + ux * hw, s.y + uy * hw);
+      ctx.stroke();
+      // Connecting end caps
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(s.x - ux * hw + nx * gap, s.y - uy * hw + ny * gap);
+      ctx.lineTo(s.x - ux * hw - nx * gap, s.y - uy * hw - ny * gap);
+      ctx.moveTo(s.x + ux * hw + nx * gap, s.y + uy * hw + ny * gap);
+      ctx.lineTo(s.x + ux * hw - nx * gap, s.y + uy * hw - ny * gap);
+      ctx.stroke();
+    }
   }
 
   function drawFurniture(item: FurnitureItem, selected: boolean) {
@@ -1855,65 +2010,245 @@
     ctx.restore();
   }
 
-  function drawStair(stair: Stair, selected: boolean) {
-    const s = worldToScreen(stair.position.x, stair.position.y);
-    const w = stair.width * zoom;
-    const d = stair.depth * zoom;
-    const angle = (stair.rotation * Math.PI) / 180;
-
-    ctx.save();
-    ctx.translate(s.x, s.y);
-    ctx.rotate(angle);
-
-    // Stair outline
-    ctx.fillStyle = selected ? '#bfdbfe80' : '#e5e7eb80';
-    ctx.strokeStyle = selected ? '#3b82f6' : '#555';
-    ctx.lineWidth = selected ? 2 : 1;
-    ctx.fillRect(-w / 2, -d / 2, w, d);
-    ctx.strokeRect(-w / 2, -d / 2, w, d);
-
-    // Tread lines
-    const treadSpacing = d / stair.riserCount;
-    ctx.strokeStyle = selected ? '#3b82f6' : '#888';
-    ctx.lineWidth = 0.5;
-    for (let i = 1; i < stair.riserCount; i++) {
-      const y = -d / 2 + i * treadSpacing;
-      ctx.beginPath();
-      ctx.moveTo(-w / 2, y);
-      ctx.lineTo(w / 2, y);
-      ctx.stroke();
-    }
-
-    // Direction arrow
+  function drawStairArrow(w: number, d: number, direction: 'up' | 'down', selected: boolean) {
     ctx.fillStyle = selected ? '#3b82f6' : '#555';
     ctx.strokeStyle = selected ? '#3b82f6' : '#555';
     ctx.lineWidth = 1.5;
-    const arrowY = stair.direction === 'up' ? -d / 2 + d * 0.15 : d / 2 - d * 0.15;
-    const arrowDir = stair.direction === 'up' ? -1 : 1;
+    const arrowY = direction === 'up' ? -d / 2 + d * 0.15 : d / 2 - d * 0.15;
+    const arrowDir = direction === 'up' ? -1 : 1;
     ctx.beginPath();
     ctx.moveTo(0, arrowY + arrowDir * d * 0.3);
     ctx.lineTo(0, arrowY);
     ctx.stroke();
-    // Arrowhead
     ctx.beginPath();
     ctx.moveTo(0, arrowY);
     ctx.lineTo(-w * 0.1, arrowY + arrowDir * d * 0.08);
     ctx.lineTo(w * 0.1, arrowY + arrowDir * d * 0.08);
     ctx.closePath();
     ctx.fill();
+  }
 
-    // Label
+  function drawStairLabel(w: number, d: number, stair: Stair, selected: boolean) {
     ctx.fillStyle = '#374151';
     ctx.font = `${Math.max(8, 10 * zoom)}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(stair.direction === 'up' ? 'UP' : 'DN', 0, 0);
+    const typeLabel = stair.stairType === 'straight' ? '' : ` (${stair.stairType})`;
+    ctx.fillText((stair.direction === 'up' ? 'UP' : 'DN') + typeLabel, 0, 0);
+  }
+
+  function drawStair(stair: Stair, selected: boolean) {
+    const s = worldToScreen(stair.position.x, stair.position.y);
+    const w = stair.width * zoom;
+    const d = stair.depth * zoom;
+    const angle = (stair.rotation * Math.PI) / 180;
+    const type = stair.stairType || 'straight';
+
+    ctx.save();
+    ctx.translate(s.x, s.y);
+    ctx.rotate(angle);
+
+    const fillCol = selected ? '#bfdbfe80' : '#e5e7eb80';
+    const strokeCol = selected ? '#3b82f6' : '#555';
+    const treadCol = selected ? '#3b82f6' : '#888';
+
+    if (type === 'straight') {
+      // Outline
+      ctx.fillStyle = fillCol;
+      ctx.strokeStyle = strokeCol;
+      ctx.lineWidth = selected ? 2 : 1;
+      ctx.fillRect(-w / 2, -d / 2, w, d);
+      ctx.strokeRect(-w / 2, -d / 2, w, d);
+      // Tread lines
+      const treadSpacing = d / stair.riserCount;
+      ctx.strokeStyle = treadCol;
+      ctx.lineWidth = 0.5;
+      for (let i = 1; i < stair.riserCount; i++) {
+        const y = -d / 2 + i * treadSpacing;
+        ctx.beginPath();
+        ctx.moveTo(-w / 2, y);
+        ctx.lineTo(w / 2, y);
+        ctx.stroke();
+      }
+      drawStairArrow(w, d, stair.direction, selected);
+      drawStairLabel(w, d, stair, selected);
+
+    } else if (type === 'l-shaped') {
+      // L-shaped: first run goes up half the depth, then turns right for second run
+      const halfRisers = Math.floor(stair.riserCount / 2);
+      const run1D = d / 2;
+      const run2W = d / 2;
+      // First run (bottom half)
+      ctx.fillStyle = fillCol;
+      ctx.strokeStyle = strokeCol;
+      ctx.lineWidth = selected ? 2 : 1;
+      ctx.fillRect(-w / 2, 0, w, run1D);
+      ctx.strokeRect(-w / 2, 0, w, run1D);
+      // Tread lines for first run
+      ctx.strokeStyle = treadCol;
+      ctx.lineWidth = 0.5;
+      const t1 = run1D / halfRisers;
+      for (let i = 1; i < halfRisers; i++) {
+        const y = i * t1;
+        ctx.beginPath();
+        ctx.moveTo(-w / 2, y);
+        ctx.lineTo(w / 2, y);
+        ctx.stroke();
+      }
+      // Landing square
+      ctx.fillStyle = fillCol;
+      ctx.strokeStyle = strokeCol;
+      ctx.lineWidth = selected ? 2 : 1;
+      ctx.fillRect(-w / 2, -w / 2, w, w / 2);
+      ctx.strokeRect(-w / 2, -w / 2, w, w / 2);
+      // Second run (turns right)
+      const run2Risers = stair.riserCount - halfRisers;
+      ctx.fillRect(w / 2, -w / 2, run2W, w);
+      ctx.strokeRect(w / 2, -w / 2, run2W, w);
+      // Tread lines for second run (vertical)
+      ctx.strokeStyle = treadCol;
+      ctx.lineWidth = 0.5;
+      const t2 = run2W / run2Risers;
+      for (let i = 1; i < run2Risers; i++) {
+        const x = w / 2 + i * t2;
+        ctx.beginPath();
+        ctx.moveTo(x, -w / 2);
+        ctx.lineTo(x, w / 2);
+        ctx.stroke();
+      }
+      // Arrow in first run
+      ctx.fillStyle = selected ? '#3b82f6' : '#555';
+      ctx.strokeStyle = selected ? '#3b82f6' : '#555';
+      ctx.lineWidth = 1.5;
+      const ay = run1D * 0.7;
+      ctx.beginPath(); ctx.moveTo(0, ay); ctx.lineTo(0, ay - run1D * 0.3); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, ay - run1D * 0.3); ctx.lineTo(-w * 0.08, ay - run1D * 0.22); ctx.lineTo(w * 0.08, ay - run1D * 0.22); ctx.closePath(); ctx.fill();
+      // Label
+      drawStairLabel(w, d, stair, selected);
+
+    } else if (type === 'u-shaped') {
+      // U-shaped: two parallel runs connected by a landing
+      const halfRisers = Math.floor(stair.riserCount / 2);
+      const runW = (w - w * 0.15) / 2; // each run width, with gap
+      const gap = w * 0.15;
+      // Left run (going up)
+      ctx.fillStyle = fillCol;
+      ctx.strokeStyle = strokeCol;
+      ctx.lineWidth = selected ? 2 : 1;
+      ctx.fillRect(-w / 2, -d / 2, runW, d);
+      ctx.strokeRect(-w / 2, -d / 2, runW, d);
+      // Tread lines left run
+      ctx.strokeStyle = treadCol;
+      ctx.lineWidth = 0.5;
+      const tU = d / halfRisers;
+      for (let i = 1; i < halfRisers; i++) {
+        const y = -d / 2 + i * tU;
+        ctx.beginPath();
+        ctx.moveTo(-w / 2, y);
+        ctx.lineTo(-w / 2 + runW, y);
+        ctx.stroke();
+      }
+      // Right run (coming back)
+      const run2Risers = stair.riserCount - halfRisers;
+      ctx.fillStyle = fillCol;
+      ctx.strokeStyle = strokeCol;
+      ctx.lineWidth = selected ? 2 : 1;
+      ctx.fillRect(w / 2 - runW, -d / 2, runW, d);
+      ctx.strokeRect(w / 2 - runW, -d / 2, runW, d);
+      // Tread lines right run
+      ctx.strokeStyle = treadCol;
+      ctx.lineWidth = 0.5;
+      const tU2 = d / run2Risers;
+      for (let i = 1; i < run2Risers; i++) {
+        const y = -d / 2 + i * tU2;
+        ctx.beginPath();
+        ctx.moveTo(w / 2 - runW, y);
+        ctx.lineTo(w / 2, y);
+        ctx.stroke();
+      }
+      // Landing at top connecting both runs
+      ctx.fillStyle = fillCol;
+      ctx.strokeStyle = strokeCol;
+      ctx.lineWidth = selected ? 2 : 1;
+      ctx.fillRect(-w / 2, -d / 2 - w * 0.1, w, w * 0.1);
+      ctx.strokeRect(-w / 2, -d / 2 - w * 0.1, w, w * 0.1);
+      // Arrows
+      ctx.fillStyle = selected ? '#3b82f6' : '#555';
+      ctx.strokeStyle = selected ? '#3b82f6' : '#555';
+      ctx.lineWidth = 1.5;
+      // Up arrow in left run
+      const lx = -w / 2 + runW / 2;
+      ctx.beginPath(); ctx.moveTo(lx, 0); ctx.lineTo(lx, -d * 0.2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(lx, -d * 0.2); ctx.lineTo(lx - runW * 0.15, -d * 0.14); ctx.lineTo(lx + runW * 0.15, -d * 0.14); ctx.closePath(); ctx.fill();
+      // Down arrow in right run
+      const rx = w / 2 - runW / 2;
+      ctx.beginPath(); ctx.moveTo(rx, 0); ctx.lineTo(rx, d * 0.2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(rx, d * 0.2); ctx.lineTo(rx - runW * 0.15, d * 0.14); ctx.lineTo(rx + runW * 0.15, d * 0.14); ctx.closePath(); ctx.fill();
+      drawStairLabel(w, d, stair, selected);
+
+    } else if (type === 'spiral') {
+      // Spiral: circle with radiating tread lines
+      const r = Math.min(w, d) / 2;
+      ctx.fillStyle = fillCol;
+      ctx.strokeStyle = strokeCol;
+      ctx.lineWidth = selected ? 2 : 1;
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      // Inner post
+      const postR = r * 0.12;
+      ctx.fillStyle = strokeCol;
+      ctx.beginPath();
+      ctx.arc(0, 0, postR, 0, Math.PI * 2);
+      ctx.fill();
+      // Tread lines radiating from center
+      ctx.strokeStyle = treadCol;
+      ctx.lineWidth = 0.5;
+      const totalAngle = Math.PI * 1.75; // 315 degrees of spiral
+      const startAngle = -Math.PI / 2;
+      for (let i = 0; i <= stair.riserCount; i++) {
+        const a = startAngle + (i / stair.riserCount) * totalAngle;
+        ctx.beginPath();
+        ctx.moveTo(postR * Math.cos(a), postR * Math.sin(a));
+        ctx.lineTo(r * Math.cos(a), r * Math.sin(a));
+        ctx.stroke();
+      }
+      // Spiral direction arrow (arc arrow)
+      ctx.strokeStyle = selected ? '#3b82f6' : '#555';
+      ctx.fillStyle = selected ? '#3b82f6' : '#555';
+      ctx.lineWidth = 1.5;
+      const arrowR = r * 0.7;
+      const aEnd = startAngle + totalAngle * 0.85;
+      const aDir = stair.direction === 'up' ? 1 : -1;
+      ctx.beginPath();
+      ctx.arc(0, 0, arrowR, startAngle + totalAngle * 0.15, aEnd, false);
+      ctx.stroke();
+      // Arrowhead at end of arc
+      const ax = arrowR * Math.cos(aEnd);
+      const ay = arrowR * Math.sin(aEnd);
+      const tangent = aEnd + Math.PI / 2;
+      ctx.beginPath();
+      ctx.moveTo(ax, ay);
+      ctx.lineTo(ax + 6 * Math.cos(tangent + 0.4), ay + 6 * Math.sin(tangent + 0.4));
+      ctx.lineTo(ax + 6 * Math.cos(tangent - 0.4), ay + 6 * Math.sin(tangent - 0.4));
+      ctx.closePath();
+      ctx.fill();
+      // Label
+      ctx.fillStyle = '#374151';
+      ctx.font = `${Math.max(8, 10 * zoom)}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(stair.direction === 'up' ? 'UP' : 'DN', 0, r + 12 * zoom);
+    }
 
     if (selected) {
       ctx.strokeStyle = '#3b82f6';
       ctx.lineWidth = 1;
       ctx.setLineDash([4, 3]);
-      ctx.strokeRect(-w / 2 - 2, -d / 2 - 2, w + 4, d + 4);
+      const bw = type === 'spiral' ? Math.min(w, d) : w;
+      const bd = type === 'spiral' ? Math.min(w, d) : d;
+      ctx.strokeRect(-bw / 2 - 2, -bd / 2 - 2, bw + 4, bd + 4);
       ctx.setLineDash([]);
     }
 

@@ -62,6 +62,8 @@ export interface FurnitureItem {
   material?: string; // material name/id
 }
 
+export type StairType = 'straight' | 'l-shaped' | 'u-shaped' | 'spiral';
+
 export interface Stair {
   id: string;
   position: Point;
@@ -70,6 +72,7 @@ export interface Stair {
   depth: number;   // default 300cm
   riserCount: number; // default 14
   direction: 'up' | 'down';
+  stairType: StairType; // default 'straight'
 }
 
 export interface Column {

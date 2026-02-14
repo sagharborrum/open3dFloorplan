@@ -718,6 +718,15 @@
     </h3>
     <div class="space-y-3">
       <label class="block">
+        <span class="text-xs text-gray-500">Type</span>
+        <select value={selectedStair.stairType || 'straight'} onchange={(e) => updateStair(selectedStair!.id, { stairType: (e.target as HTMLSelectElement).value as any })} class="w-full px-2 py-1 border border-gray-200 rounded text-sm">
+          <option value="straight">Straight</option>
+          <option value="l-shaped">L-Shaped</option>
+          <option value="u-shaped">U-Shaped</option>
+          <option value="spiral">Spiral</option>
+        </select>
+      </label>
+      <label class="block">
         <span class="text-xs text-gray-500">Width ({unitLabel()})</span>
         <input type="number" value={displayValue(selectedStair.width)} oninput={(e) => updateStair(selectedStair!.id, { width: inputToCm(Number((e.target as HTMLInputElement).value)) })} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
       </label>
