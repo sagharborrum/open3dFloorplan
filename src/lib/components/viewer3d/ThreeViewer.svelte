@@ -8,6 +8,7 @@
   import * as THREE from 'three';
   import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
   import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
+  import MaterialPicker from './MaterialPicker.svelte';
   import { getCatalogItem } from '$lib/utils/furnitureCatalog';
   import { createFurnitureModel } from '$lib/utils/furnitureModels3d';
   import { createFurnitureModelWithGLB } from '$lib/utils/furnitureModelLoader';
@@ -35,6 +36,9 @@
 
   // 3D Edit mode — enables click-to-select
   let editMode = $state(false);
+  // Material picker state
+  let materialPickerPos = $state<{ x: number; y: number } | null>(null);
+  let materialPickerWall = $state<Wall | null>(null);
   // Wall transparency toggle
   let wallsTransparent = $state(false);
   // Multi-floor stacking
@@ -165,6 +169,16 @@
         }
       }
       selectedElementId.set(hitWallId);
+      
+      // Show/hide material picker
+      if (hitWallId && currentFloor) {
+        const hitWall = currentFloor.walls.find(w => w.id === hitWallId) ?? null;
+        materialPickerWall = hitWall;
+        materialPickerPos = { x: e.clientX, y: e.clientY };
+      } else {
+        materialPickerWall = null;
+        materialPickerPos = null;
+      }
     });
 
     // Hover highlight in edit mode
@@ -183,7 +197,7 @@
       const hit = intersects.find(i => i.object.userData.wallId);
       if (hit && hit.object !== hoveredMesh) {
         hoveredMesh = hit.object as THREE.Mesh;
-        renderer.domElement.style.cursor = 'pointer';
+        renderer.domElement.style.cursor = 'url("data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="%23fff" stroke="%23000" stroke-width="1.5" d="M16.56 8.94L7.62 0 6.21 1.41l2.38 2.38-5.15 5.15a1.49 1.49 0 0 0 0 2.12l5.5 5.5a1.49 1.49 0 0 0 2.12 0l5.5-5.5a1.49 1.49 0 0 0 0-2.12zM5.21 10L10 5.21 14.79 10H5.21zM19 11.5s-2 2.17-2 3.5a2 2 0 1 0 4 0c0-1.33-2-3.5-2-3.5z"/></svg>') + '") 2 22, pointer';
       } else if (!hit) {
         hoveredMesh = null;
         renderer.domElement.style.cursor = editMode ? 'crosshair' : '';
@@ -1118,6 +1132,11 @@
   function onKeyDown(event: KeyboardEvent) {
     // ESC exits edit mode
     if (event.code === 'Escape' && editMode && !walkthroughMode) {
+      if (materialPickerWall) {
+        materialPickerWall = null;
+        materialPickerPos = null;
+        return;
+      }
       editMode = false;
       selectedElementId.set(null);
       return;
@@ -1422,7 +1441,7 @@
 
   <!-- Edit Mode Toggle -->
   <button
-    onclick={() => { editMode = !editMode; if (editMode && walkthroughMode) { exitWalkthroughMode(); } if (!editMode) selectedElementId.set(null); }}
+    onclick={() => { editMode = !editMode; if (editMode && walkthroughMode) { exitWalkthroughMode(); } if (!editMode) { selectedElementId.set(null); materialPickerWall = null; materialPickerPos = null; } }}
     class="absolute top-4 right-28 z-50 p-2 rounded-lg transition-colors {editMode ? 'bg-blue-600 text-white ring-2 ring-blue-300' : 'bg-black/70 text-white hover:bg-black/80'}"
     title={editMode ? 'Exit Edit Mode' : 'Edit Mode — click to select walls & change materials'}
     aria-label={editMode ? 'Exit Edit Mode' : 'Edit Mode'}
@@ -1525,8 +1544,17 @@
           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
         </svg>
-        Edit Mode — Click walls to select & change materials • ESC to exit
+        🪣 Click walls to paint materials • ESC to close picker or exit
       </div>
     </div>
+  {/if}
+
+  {#if materialPickerWall && materialPickerPos && editMode}
+    <MaterialPicker
+      wall={materialPickerWall}
+      screenX={materialPickerPos.x}
+      screenY={materialPickerPos.y}
+      onclose={() => { materialPickerWall = null; materialPickerPos = null; }}
+    />
   {/if}
 </div>

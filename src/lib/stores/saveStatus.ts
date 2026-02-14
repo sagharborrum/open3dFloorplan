@@ -35,12 +35,29 @@ export function markDirty() {
   }, 5000);
 }
 
+function captureThumbnail(projectId: string) {
+  try {
+    const canvas = document.querySelector('canvas') as HTMLCanvasElement;
+    if (!canvas) return;
+    const size = 300;
+    const tmp = document.createElement('canvas');
+    tmp.width = size;
+    tmp.height = Math.round(size * (canvas.height / canvas.width));
+    const ctx = tmp.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(canvas, 0, 0, tmp.width, tmp.height);
+    const dataUrl = tmp.toDataURL('image/jpeg', 0.6);
+    localStore.saveThumbnail(projectId, dataUrl);
+  } catch {}
+}
+
 async function autoSave() {
   const p = get(currentProject);
   if (!p) return;
   saveState.set('saving');
   try {
     await localStore.save(p);
+    captureThumbnail(p.id);
     saveState.set('saved');
     lastSavedAt.set(new Date());
   } catch (e) {
@@ -57,6 +74,7 @@ export async function manualSave() {
   saveState.set('saving');
   try {
     await localStore.save(p);
+    captureThumbnail(p.id);
     saveState.set('saved');
     lastSavedAt.set(new Date());
   } catch (e) {

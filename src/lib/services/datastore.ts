@@ -5,6 +5,9 @@ export interface DataStore {
   load(id: string): Promise<Project | null>;
   list(): Promise<{ id: string; name: string; updatedAt: string }[]>;
   delete(id: string): Promise<void>;
+  duplicate(id: string): Promise<Project | null>;
+  saveThumbnail(id: string, dataUrl: string): void;
+  getThumbnail(id: string): string | null;
 }
 
 const KEY = 'floorplan_projects';
@@ -72,5 +75,35 @@ export const localStore: DataStore = {
     const all = getAll();
     delete all[id];
     localStorage.setItem(KEY, JSON.stringify(all));
+    // Also remove thumbnail
+    try { localStorage.removeItem(`floorplan_thumb_${id}`); } catch {}
+  },
+
+  async duplicate(id: string): Promise<Project | null> {
+    const original = await this.load(id);
+    if (!original) return null;
+    const newId = Math.random().toString(36).slice(2, 10);
+    const dup: Project = {
+      ...original,
+      id: newId,
+      name: `${original.name} (Copy)`,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    await this.save(dup);
+    // Copy thumbnail if exists
+    try {
+      const thumb = localStorage.getItem(`floorplan_thumb_${id}`);
+      if (thumb) localStorage.setItem(`floorplan_thumb_${newId}`, thumb);
+    } catch {}
+    return dup;
+  },
+
+  saveThumbnail(id: string, dataUrl: string) {
+    try { localStorage.setItem(`floorplan_thumb_${id}`, dataUrl); } catch {}
+  },
+
+  getThumbnail(id: string): string | null {
+    try { return localStorage.getItem(`floorplan_thumb_${id}`); } catch { return null; }
   },
 };
