@@ -9,9 +9,11 @@
   import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
   import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
   import MaterialPicker from './MaterialPicker.svelte';
-  import { getCatalogItem } from '$lib/utils/furnitureCatalog';
+  import { getCatalogItem, furnitureCatalog, furnitureCategories } from '$lib/utils/furnitureCatalog';
+  import type { FurnitureDef } from '$lib/utils/furnitureCatalog';
   import { createFurnitureModel } from '$lib/utils/furnitureModels3d';
   import { createFurnitureModelWithGLB } from '$lib/utils/furnitureModelLoader';
+  import { addFurniture } from '$lib/stores/project';
   import { detectRooms, getRoomPolygon, roomCentroid } from '$lib/utils/roomDetection';
   import { getMaterial } from '$lib/utils/materials';
   import { getWallTextureCanvas, getFloorTextureCanvas, setTextureLoadCallback } from '$lib/utils/textureGenerator';
@@ -79,6 +81,15 @@
   let rimLight: THREE.DirectionalLight;
   let skyCanvas: HTMLCanvasElement;
   let skyTexture: THREE.CanvasTexture;
+
+  // 3D Furniture Placement
+  let furniturePlacementMode = $state(false);
+  let furniturePickerOpen = $state(false);
+  let selectedCatalogId = $state<string | null>(null);
+  let furniturePickerCategory = $state<string>('Living Room');
+  let ghostGroup: THREE.Group | null = null;
+  let floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0); // y=0 plane
+  let ghostIntersection = new THREE.Vector3();
 
   const TIME_PRESETS = {
     morning: { azimuth: 90, elevation: 25, ambient: 0.3, sunColor: 0xffe0a0, sunIntensity: 0.8, skyTop: '#f5a86c', skyMid: '#fdd89b', skyHorizon: '#ffe8c0', hemiSky: '#fdd89b', hemiGround: '#9b8060' },
@@ -235,6 +246,19 @@
       mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
       raycaster.setFromCamera(mouse, camera);
 
+      // Furniture placement mode: place on floor
+      if (furniturePlacementMode && selectedCatalogId) {
+        raycaster.setFromCamera(mouse, camera);
+        const hit = new THREE.Vector3();
+        if (raycaster.ray.intersectPlane(floorPlane, hit)) {
+          // Convert 3D (x, z) to 2D (x, y)
+          const pos2D = { x: hit.x, y: hit.z };
+          addFurniture(selectedCatalogId, pos2D);
+          // Scene will rebuild via store subscription
+        }
+        return;
+      }
+
       const intersects = raycaster.intersectObjects(wallGroup.children, false);
       let hitWallId: string | null = null;
       for (const hit of intersects) {
@@ -259,6 +283,30 @@
     // Hover highlight in edit mode
     let hoveredMesh: THREE.Mesh | null = null;
     renderer.domElement.addEventListener('mousemove', (e) => {
+      // Furniture placement ghost preview
+      if (editMode && furniturePlacementMode && selectedCatalogId) {
+        const rect = renderer.domElement.getBoundingClientRect();
+        mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+        const hit = new THREE.Vector3();
+        if (raycaster.ray.intersectPlane(floorPlane, hit)) {
+          if (!ghostGroup) {
+            createGhostPreview(selectedCatalogId);
+          }
+          if (ghostGroup) {
+            ghostGroup.position.set(hit.x, 0, hit.z);
+            ghostGroup.visible = true;
+          }
+        } else if (ghostGroup) {
+          ghostGroup.visible = false;
+        }
+        renderer.domElement.style.cursor = 'crosshair';
+        return;
+      } else if (ghostGroup) {
+        ghostGroup.visible = false;
+      }
+
       if (!editMode) {
         if (hoveredMesh) { hoveredMesh = null; renderer.domElement.style.cursor = ''; }
         return;
@@ -333,6 +381,58 @@
 
     wallGroup = new THREE.Group();
     scene.add(wallGroup);
+  }
+
+  function createGhostPreview(catalogId: string) {
+    removeGhostPreview();
+    const cat = getCatalogItem(catalogId);
+    if (!cat || cat.symbol) return;
+    const model = createFurnitureModelWithGLB(catalogId, cat, () => {
+      if (renderer && scene && camera) renderer.render(scene, camera);
+    });
+    // Make semi-transparent
+    model.traverse((child: any) => {
+      if (child instanceof THREE.Mesh) {
+        if (Array.isArray(child.material)) {
+          child.material = child.material.map((m: THREE.Material) => {
+            const c = m.clone();
+            if (c instanceof THREE.MeshStandardMaterial) {
+              c.transparent = true;
+              c.opacity = 0.5;
+              c.emissive = new THREE.Color(0x4488ff);
+              c.emissiveIntensity = 0.3;
+            }
+            return c;
+          });
+        } else {
+          const c = child.material.clone();
+          if (c instanceof THREE.MeshStandardMaterial) {
+            c.transparent = true;
+            c.opacity = 0.5;
+            c.emissive = new THREE.Color(0x4488ff);
+            c.emissiveIntensity = 0.3;
+          }
+          child.material = c;
+        }
+      }
+    });
+    model.visible = false;
+    ghostGroup = model;
+    scene.add(ghostGroup);
+  }
+
+  function removeGhostPreview() {
+    if (ghostGroup) {
+      scene.remove(ghostGroup);
+      ghostGroup.traverse((obj: any) => {
+        if (obj.geometry) obj.geometry.dispose();
+        if (obj.material) {
+          if (Array.isArray(obj.material)) obj.material.forEach((m: any) => m.dispose());
+          else obj.material.dispose();
+        }
+      });
+      ghostGroup = null;
+    }
   }
 
   function autoCenterCamera(floor: Floor) {
@@ -1209,6 +1309,13 @@
   function onKeyDown(event: KeyboardEvent) {
     // ESC exits edit mode
     if (event.code === 'Escape' && editMode && !walkthroughMode) {
+      if (furniturePlacementMode) {
+        furniturePlacementMode = false;
+        furniturePickerOpen = false;
+        selectedCatalogId = null;
+        removeGhostPreview();
+        return;
+      }
       if (materialPickerWall) {
         materialPickerWall = null;
         materialPickerPos = null;
@@ -1621,9 +1728,60 @@
           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
         </svg>
-        🪣 Click walls to paint materials • ESC to close picker or exit
+        {#if furniturePlacementMode}
+          🪑 Click floor to place {selectedCatalogId ? getCatalogItem(selectedCatalogId)?.name ?? 'furniture' : 'furniture'} • ESC to cancel
+        {:else}
+          🪣 Click walls to paint materials • ESC to close picker or exit
+        {/if}
       </div>
     </div>
+
+    <!-- Furniture Placement Toggle -->
+    <button
+      onclick={() => { furniturePlacementMode = !furniturePlacementMode; if (!furniturePlacementMode) { removeGhostPreview(); selectedCatalogId = null; furniturePickerOpen = false; } else { furniturePickerOpen = true; materialPickerWall = null; materialPickerPos = null; } }}
+      class="absolute top-16 right-28 z-50 p-2 rounded-lg transition-colors {furniturePlacementMode ? 'bg-green-600 text-white ring-2 ring-green-300' : 'bg-black/70 text-white hover:bg-black/80'}"
+      title={furniturePlacementMode ? 'Exit Furniture Placement' : 'Place Furniture'}
+      aria-label={furniturePlacementMode ? 'Exit Furniture Placement' : 'Place Furniture'}
+    >
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="12" width="18" height="8" rx="1"/>
+        <path d="M5 12V8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v4"/>
+        <line x1="5" y1="20" x2="5" y2="22"/>
+        <line x1="19" y1="20" x2="19" y2="22"/>
+      </svg>
+    </button>
+
+    <!-- Furniture Picker Panel -->
+    {#if furniturePlacementMode && furniturePickerOpen}
+      <div class="absolute top-4 left-4 z-50 bg-black/85 text-white rounded-lg backdrop-blur-sm w-56 max-h-[70vh] flex flex-col overflow-hidden select-none">
+        <div class="p-2 border-b border-white/10 flex items-center justify-between">
+          <span class="font-semibold text-sm">🪑 Furniture</span>
+          <button onclick={() => { furniturePickerOpen = false; }} class="text-white/50 hover:text-white text-lg leading-none">&times;</button>
+        </div>
+        <!-- Category tabs -->
+        <div class="flex flex-wrap gap-1 p-2 border-b border-white/10">
+          {#each furnitureCategories.filter(c => c !== 'Electrical' && c !== 'Plumbing') as cat}
+            <button
+              onclick={() => { furniturePickerCategory = cat; }}
+              class="px-2 py-0.5 rounded text-[10px] transition-colors {furniturePickerCategory === cat ? 'bg-green-600 text-white' : 'bg-white/10 hover:bg-white/20 text-white/70'}"
+            >{cat}</button>
+          {/each}
+        </div>
+        <!-- Items -->
+        <div class="overflow-y-auto p-1 flex-1">
+          {#each furnitureCatalog.filter(f => f.category === furniturePickerCategory && !f.symbol) as item}
+            <button
+              onclick={() => { selectedCatalogId = item.id; removeGhostPreview(); }}
+              class="w-full text-left px-2 py-1.5 rounded text-xs flex items-center gap-2 transition-colors {selectedCatalogId === item.id ? 'bg-green-600/80 text-white' : 'hover:bg-white/10 text-white/80'}"
+            >
+              <span class="text-base">{item.icon}</span>
+              <span>{item.name}</span>
+              <span class="ml-auto text-[10px] text-white/40">{item.width}×{item.depth}</span>
+            </button>
+          {/each}
+        </div>
+      </div>
+    {/if}
   {/if}
 
   {#if materialPickerWall && materialPickerPos && editMode}

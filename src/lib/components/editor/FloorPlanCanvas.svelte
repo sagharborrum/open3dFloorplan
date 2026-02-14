@@ -3680,7 +3680,7 @@
     return null;
   }
 
-  function pointInPolygon(p: Point, poly: Point[]): boolean {
+  function pointInPolygonLocal(p: Point, poly: Point[]): boolean {
     let inside = false;
     for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
       if ((poly[i].y > p.y) !== (poly[j].y > p.y) &&
