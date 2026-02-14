@@ -250,9 +250,12 @@
       roughness: 0.92,
       metalness: 0
     });
+    groundMat.polygonOffset = true;
+    groundMat.polygonOffsetFactor = 2;
+    groundMat.polygonOffsetUnits = 2;
     const ground = new THREE.Mesh(groundGeo, groundMat);
     ground.rotation.x = -Math.PI / 2;
-    ground.position.y = -0.5;
+    ground.position.y = -1;
     ground.receiveShadow = true;
     scene.add(ground);
 
@@ -421,9 +424,10 @@
     // Textured floor
     const floorTex = createFloorTexture();
     const floorGeo = new THREE.PlaneGeometry(4000, 4000);
-    const floorMat = new THREE.MeshStandardMaterial({ map: floorTex, side: THREE.DoubleSide, roughness: 0.8 });
+    const floorMat = new THREE.MeshStandardMaterial({ map: floorTex, side: THREE.DoubleSide, roughness: 0.8, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
     const floorMesh = new THREE.Mesh(floorGeo, floorMat);
     floorMesh.rotation.x = -Math.PI / 2;
+    floorMesh.position.y = 0.5;
     floorMesh.receiveShadow = true;
     scene.add(floorMesh);
 
