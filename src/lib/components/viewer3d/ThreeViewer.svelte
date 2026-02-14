@@ -115,10 +115,15 @@
   const STYLE_OPTIONS = ['photorealistic', 'architectural visualization', 'interior design magazine', 'minimalist', 'scandinavian', 'industrial', 'mid-century modern', 'luxury'];
   const LIGHTING_OPTIONS = ['natural daylight', 'warm afternoon', 'golden hour', 'soft ambient', 'dramatic shadows', 'bright and airy', 'moody evening', 'studio lighting'];
   const MOOD_OPTIONS = ['warm and inviting', 'clean and modern', 'cozy', 'elegant', 'rustic charm', 'sophisticated', 'relaxed', 'vibrant'];
+  let aiProvider = $state<'gemini' | 'openai'>('gemini');
   let aiModel = $state('gemini-2.5-flash-image');
   const AI_MODELS = [
     { id: 'gemini-2.5-flash-image', name: 'Nano Banana (2.5 Flash)', desc: 'Fast & efficient image gen ✓' },
     { id: 'gemini-3-pro-image-preview', name: 'Nano Banana Pro (3 Pro)', desc: 'Best quality, thinking, up to 4K ✓' },
+  ];
+  let openaiModel = $state('gpt-image-1');
+  const OPENAI_MODELS = [
+    { id: 'gpt-image-1', name: 'GPT Image 1', desc: 'High quality image generation' },
   ];
 
   function buildAIPrompt(): string {
@@ -132,35 +137,46 @@
     return prompt;
   }
 
+  /** Capture scene from interior camera as base64 PNG */
+  function captureSceneBase64(width: number, height: number): string {
+    updateInteriorCamera();
+    const offRenderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+    offRenderer.setSize(width, height);
+    offRenderer.shadowMap.enabled = true;
+    offRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    offRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+    if (cameraHelper) cameraHelper.visible = false;
+    setSpritesVisible(false);
+    offRenderer.render(scene!, interiorCamera!);
+    if (cameraHelper) cameraHelper.visible = true;
+    setSpritesVisible(true);
+    const dataUrl = offRenderer.domElement.toDataURL('image/png');
+    offRenderer.dispose();
+    return dataUrl;
+  }
+
   async function runAIRender() {
+    if (!scene || !interiorCamera) return;
+
+    if (aiProvider === 'gemini') {
+      await runGeminiRender();
+    } else {
+      await runOpenAIRender();
+    }
+  }
+
+  async function runGeminiRender() {
     const geminiKey = localStorage.getItem('o3d_gemini_key');
     if (!geminiKey) {
       alert('Please add your Gemini API key in Settings > AI tab first.');
       return;
     }
-    if (!scene || !interiorCamera) return;
     
     aiRendering = true;
     aiRenderResult = null;
     
     try {
-      // Capture the current preview as base64
-      updateInteriorCamera();
-      const width = 1024;
-      const height = 576;
-      const offRenderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-      offRenderer.setSize(width, height);
-      offRenderer.shadowMap.enabled = true;
-      offRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
-      offRenderer.toneMapping = THREE.ACESFilmicToneMapping;
-      if (cameraHelper) cameraHelper.visible = false;
-      setSpritesVisible(false);
-      offRenderer.render(scene, interiorCamera);
-      if (cameraHelper) cameraHelper.visible = true;
-      setSpritesVisible(true);
-      const imageDataUrl = offRenderer.domElement.toDataURL('image/png');
-      offRenderer.dispose();
-      
+      const imageDataUrl = captureSceneBase64(1024, 576);
       const base64Image = imageDataUrl.split(',')[1];
       const prompt = buildAIPrompt();
       
@@ -175,7 +191,6 @@
           responseModalities: ['TEXT', 'IMAGE'],
         }
       };
-      // Add aspect ratio config for supported models
       requestBody.generationConfig.imageConfig = { aspectRatio: '16:9' };
       
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=${geminiKey}`, {
@@ -197,6 +212,59 @@
       } else {
         const textPart = parts.find((p: any) => p.text && !p.thought);
         throw new Error(textPart?.text || 'No image returned. Try a different model or prompt.');
+      }
+    } catch (e: any) {
+      alert(`AI Render failed: ${e.message}`);
+    } finally {
+      aiRendering = false;
+    }
+  }
+
+  async function runOpenAIRender() {
+    const openaiKey = localStorage.getItem('o3d_openai_key');
+    if (!openaiKey) {
+      alert('Please add your OpenAI API key in Settings > AI tab first.');
+      return;
+    }
+    
+    aiRendering = true;
+    aiRenderResult = null;
+    
+    try {
+      const imageDataUrl = captureSceneBase64(1024, 576);
+      const prompt = buildAIPrompt();
+
+      // Convert data URL to blob for multipart upload
+      const blob = await (await fetch(imageDataUrl)).blob();
+      const file = new File([blob], 'scene.png', { type: 'image/png' });
+
+      const formData = new FormData();
+      formData.append('model', openaiModel);
+      formData.append('prompt', prompt);
+      formData.append('image[]', file);
+      formData.append('size', '1536x1024');
+      formData.append('quality', 'high');
+      
+      const response = await fetch('https://api.openai.com/v1/images/edits', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${openaiKey}` },
+        body: formData
+      });
+      
+      if (!response.ok) {
+        const err = await response.text();
+        throw new Error(`OpenAI API error: ${response.status} — ${err}`);
+      }
+      
+      const data = await response.json();
+      const imageUrl = data.data?.[0]?.url;
+      const b64 = data.data?.[0]?.b64_json;
+      if (b64) {
+        aiRenderResult = `data:image/png;base64,${b64}`;
+      } else if (imageUrl) {
+        aiRenderResult = imageUrl;
+      } else {
+        throw new Error('No image returned from OpenAI.');
       }
     } catch (e: any) {
       alert(`AI Render failed: ${e.message}`);
@@ -2282,11 +2350,29 @@
         <div class="border-t border-gray-700 px-3 py-3 space-y-2">
           <div class="text-xs font-medium text-white">✨ AI Photorealistic Render</div>
 
+          <!-- Provider toggle -->
+          <div class="flex rounded-lg overflow-hidden border border-gray-700">
+            <button
+              class="flex-1 text-xs py-1.5 font-medium transition-colors {aiProvider === 'gemini' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-gray-200'}"
+              onclick={() => { aiProvider = 'gemini'; }}
+            >Gemini</button>
+            <button
+              class="flex-1 text-xs py-1.5 font-medium transition-colors {aiProvider === 'openai' ? 'bg-green-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-gray-200'}"
+              onclick={() => { aiProvider = 'openai'; }}
+            >OpenAI</button>
+          </div>
+
           <label class="block">
             <span class="text-[10px] text-gray-400 block mb-1">Model</span>
-            <select bind:value={aiModel} class="w-full bg-gray-800 text-gray-200 text-xs rounded px-1.5 py-1.5 border border-gray-700">
-              {#each AI_MODELS as m}<option value={m.id}>{m.name} — {m.desc}</option>{/each}
-            </select>
+            {#if aiProvider === 'gemini'}
+              <select bind:value={aiModel} class="w-full bg-gray-800 text-gray-200 text-xs rounded px-1.5 py-1.5 border border-gray-700">
+                {#each AI_MODELS as m}<option value={m.id}>{m.name} — {m.desc}</option>{/each}
+              </select>
+            {:else}
+              <select bind:value={openaiModel} class="w-full bg-gray-800 text-gray-200 text-xs rounded px-1.5 py-1.5 border border-gray-700">
+                {#each OPENAI_MODELS as m}<option value={m.id}>{m.name} — {m.desc}</option>{/each}
+              </select>
+            {/if}
           </label>
           
           <div class="grid grid-cols-3 gap-2">
