@@ -5,13 +5,18 @@
   let tip = $derived(getActiveTip());
   let visible = $state(false);
 
+  let autoTimer: ReturnType<typeof setTimeout> | null = null;
   $effect(() => {
     if (tip) {
       // Small delay for enter animation
       visible = false;
       requestAnimationFrame(() => { visible = true; });
+      // Auto-dismiss after 8 seconds
+      if (autoTimer) clearTimeout(autoTimer);
+      autoTimer = setTimeout(() => { dismissTip(); }, 8000);
     } else {
       visible = false;
+      if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
     }
   });
 </script>

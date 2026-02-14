@@ -167,9 +167,14 @@
         exportOpen = false;
       }
     }
+    function handleKeydown() {
+      if (exportOpen) exportOpen = false;
+    }
     document.addEventListener('click', handleClickOutside, true);
+    document.addEventListener('keydown', handleKeydown, true);
     return () => {
       document.removeEventListener('click', handleClickOutside, true);
+      document.removeEventListener('keydown', handleKeydown, true);
       clearInterval(interval);
     };
   });
@@ -363,17 +368,6 @@
       >+</button>
     </div>
   {/if}
-
-  <!-- Share button -->
-  <button
-    onclick={onShareProject}
-    class="px-2.5 py-1.5 text-sm text-white/90 hover:text-white hover:bg-white/10 rounded transition-colors flex items-center gap-1.5"
-    title="Share Project (download JSON)"
-    aria-label="Share Project"
-  >
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-    Share
-  </button>
 
   <!-- Version History button -->
   <button

@@ -1462,7 +1462,7 @@
     wallGroup.traverse((child) => {
       if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshStandardMaterial) {
         child.material.transparent = wallsTransparent;
-        child.material.opacity = wallsTransparent ? 0.3 : 1.0;
+        child.material.opacity = wallsTransparent ? 0.15 : 1.0;
         child.material.needsUpdate = true;
       }
     });
