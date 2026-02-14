@@ -101,11 +101,11 @@ function createStudioApartment(): Project {
   ];
 
   const fur: FurnitureItem[] = [
-    furniture('bed-single', 400, 80, 0),
-    furniture('sofa-2seat', 300, 300, 0),
-    furniture('dining-table-round', 480, 380, 0),
+    furniture('bed_twin', 400, 80, 0),
+    furniture('loveseat', 300, 300, 0),
+    furniture('dining_table', 480, 380, 0),
     furniture('toilet', 60, 400, 0),
-    furniture('sink-single', 60, 340, 0),
+    furniture('sink_b', 60, 340, 0),
   ];
 
   return makeProject('Studio Apartment', makeFloor(walls, doors, windows, fur));
@@ -140,12 +140,12 @@ function createOneBedroom(): Project {
   ];
 
   const fur: FurnitureItem[] = [
-    furniture('bed-double', 120, 120, 0),
+    furniture('bed_queen', 120, 120, 0),
     furniture('wardrobe', 50, 280, 0),
-    furniture('sofa-3seat', 500, 350, 180),
-    furniture('dining-table-rect', 420, 540, 0),
+    furniture('sofa', 500, 350, 180),
+    furniture('dining_table', 420, 540, 0),
     furniture('toilet', 700, 60, 0),
-    furniture('sink-single', 700, 170, 0),
+    furniture('sink_b', 700, 170, 0),
   ];
 
   return makeProject('1-Bedroom Apartment', makeFloor(walls, doors, windows, fur));
@@ -187,12 +187,12 @@ function createTwoBedroom(): Project {
   ];
 
   const fur: FurnitureItem[] = [
-    furniture('bed-double', 150, 150, 0),
-    furniture('bed-single', 700, 150, 0),
-    furniture('sofa-3seat', 200, 600, 0),
-    furniture('dining-table-rect', 500, 650, 0),
+    furniture('bed_queen', 150, 150, 0),
+    furniture('bed_twin', 700, 150, 0),
+    furniture('sofa', 200, 600, 0),
+    furniture('dining_table', 500, 650, 0),
     furniture('toilet', 850, 600, 0),
-    furniture('sink-single', 850, 720, 0),
+    furniture('sink_b', 850, 720, 0),
   ];
 
   return makeProject('2-Bedroom House', makeFloor(walls, doors, windows, fur));
@@ -237,12 +237,12 @@ function createOpenConcept(): Project {
   ];
 
   const fur: FurnitureItem[] = [
-    furniture('sofa-3seat', 200, 250, 0),
-    furniture('dining-table-rect', 350, 600, 0),
-    furniture('bed-double', 880, 100, 0),
-    furniture('bed-double', 880, 620, 0),
+    furniture('sofa', 200, 250, 0),
+    furniture('dining_table', 350, 600, 0),
+    furniture('bed_queen', 880, 100, 0),
+    furniture('bed_queen', 880, 620, 0),
     furniture('toilet', 1080, 60, 0),
-    furniture('sink-single', 1080, 140, 0),
+    furniture('sink_b', 1080, 140, 0),
     furniture('toilet', 880, 440, 0),
   ];
 
@@ -320,15 +320,15 @@ function createLShaped(): Project {
   ];
 
   const fur: FurnitureItem[] = [
-    furniture('bed-double', 150, 120, 0),
-    furniture('bed-double', 550, 120, 0),
-    furniture('bed-single', 1050, 120, 0),
-    furniture('sofa-3seat', 500, 450, 0),
-    furniture('dining-table-rect', 1100, 470, 0),
+    furniture('bed_queen', 150, 120, 0),
+    furniture('bed_queen', 550, 120, 0),
+    furniture('bed_twin', 1050, 120, 0),
+    furniture('sofa', 500, 450, 0),
+    furniture('dining_table', 1100, 470, 0),
     furniture('toilet', 80, 450, 0),
-    furniture('sink-single', 80, 530, 0),
+    furniture('sink_b', 80, 530, 0),
     furniture('toilet', 880, 450, 0),
-    furniture('sink-single', 880, 530, 0),
+    furniture('sink_b', 880, 530, 0),
   ];
 
   return makeProject('L-Shaped House', makeFloor(walls, doors, windows, fur));
