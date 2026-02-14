@@ -862,23 +862,60 @@
     _drawColumn(getCS(), col, selected);
   }
 
+  function rulerLabel(worldCm: number, tickStep: number, isImperial: boolean): string {
+    if (isImperial) {
+      const inches = worldCm / 2.54;
+      const ft = inches / 12;
+      if (tickStep / 2.54 >= 12) {
+        // Show feet
+        return `${ft % 1 === 0 ? ft.toFixed(0) : ft.toFixed(1)}'`;
+      }
+      return `${Math.round(inches)}"`;
+    }
+    // Metric
+    if (tickStep >= 100) {
+      const m = worldCm / 100;
+      return `${worldCm % 100 === 0 ? m.toFixed(0) : m.toFixed(1)}m`;
+    }
+    return `${Math.round(worldCm)}`;
+  }
+
   function drawRulers() {
     if (!ctx || !showRulers) return;
     const R = RULER_SIZE;
     const fontSize = 9;
+    const isImperial = dimSettings.units === 'imperial';
     ctx.save();
 
     // Determine tick spacing based on zoom
-    // We want ticks ~50-150px apart in screen space
-    const rawStep = 50 / zoom; // world units per ~50px
-    // Round to a nice number: 10, 20, 50, 100, 200, 500, 1000...
-    const niceSteps = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000];
-    let tickStep = niceSteps[niceSteps.length - 1];
-    for (const s of niceSteps) {
-      if (s * zoom >= 40) { tickStep = s; break; }
+    // For imperial: use inch-friendly steps (in cm equivalents)
+    // For metric: use cm-friendly steps
+    let tickStep: number;
+    let minorDiv: number;
+    let minorStep: number;
+
+    if (isImperial) {
+      // Nice steps in inches, stored as cm: 1in, 2in, 6in, 1ft, 2ft, 5ft, 10ft, 20ft, 50ft, 100ft
+      const inchCm = 2.54;
+      const niceInchSteps = [1, 2, 6, 12, 24, 60, 120, 240, 600, 1200, 2400];
+      const niceStepsCm = niceInchSteps.map(i => i * inchCm);
+      tickStep = niceStepsCm[niceStepsCm.length - 1];
+      for (const s of niceStepsCm) {
+        if (s * zoom >= 40) { tickStep = s; break; }
+      }
+      const tickInches = tickStep / inchCm;
+      // Minor divisions: if >= 1ft, divide by 6 (every 2in); else divide by 2
+      minorDiv = tickInches >= 12 ? 6 : tickInches >= 6 ? 3 : 2;
+      minorStep = tickStep / minorDiv;
+    } else {
+      const niceSteps = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000];
+      tickStep = niceSteps[niceSteps.length - 1];
+      for (const s of niceSteps) {
+        if (s * zoom >= 40) { tickStep = s; break; }
+      }
+      minorDiv = tickStep >= 100 ? 5 : tickStep >= 10 ? 5 : 2;
+      minorStep = tickStep / minorDiv;
     }
-    const minorDiv = tickStep >= 100 ? 5 : tickStep >= 10 ? 5 : 2;
-    const minorStep = tickStep / minorDiv;
 
     // --- Horizontal ruler (top) ---
     ctx.fillStyle = '#f1f3f5';
@@ -904,16 +941,20 @@
       const isMid = !isMajor && Math.abs(wx % (tickStep / 2)) < 0.01 && minorDiv >= 4;
       const tickH = isMajor ? R * 0.7 : isMid ? R * 0.45 : R * 0.25;
 
-      ctx.strokeStyle = isMajor ? '#9ca3af' : '#d1d5db';
-      ctx.lineWidth = isMajor ? 1 : 0.5;
+      // Highlight origin tick
+      const isOrigin = Math.abs(wx) < 0.01;
+      ctx.strokeStyle = isOrigin ? '#ef4444' : isMajor ? '#9ca3af' : '#d1d5db';
+      ctx.lineWidth = isOrigin ? 1.5 : isMajor ? 1 : 0.5;
       ctx.beginPath();
       ctx.moveTo(sx, R);
       ctx.lineTo(sx, R - tickH);
       ctx.stroke();
 
       if (isMajor) {
-        const label = tickStep >= 100 ? `${(wx / 100).toFixed(wx % 100 === 0 ? 0 : 1)}m` : `${Math.round(wx)}`;
+        ctx.fillStyle = isOrigin ? '#ef4444' : '#6b7280';
+        const label = isOrigin ? '0' : rulerLabel(wx, tickStep, isImperial);
         ctx.fillText(label, sx, 2);
+        ctx.fillStyle = '#6b7280';
       }
     }
 
@@ -938,38 +979,55 @@
       const isMid = !isMajor && Math.abs(wy % (tickStep / 2)) < 0.01 && minorDiv >= 4;
       const tickH = isMajor ? R * 0.7 : isMid ? R * 0.45 : R * 0.25;
 
-      ctx.strokeStyle = isMajor ? '#9ca3af' : '#d1d5db';
-      ctx.lineWidth = isMajor ? 1 : 0.5;
+      const isOrigin = Math.abs(wy) < 0.01;
+      ctx.strokeStyle = isOrigin ? '#ef4444' : isMajor ? '#9ca3af' : '#d1d5db';
+      ctx.lineWidth = isOrigin ? 1.5 : isMajor ? 1 : 0.5;
       ctx.beginPath();
       ctx.moveTo(R, sy);
       ctx.lineTo(R - tickH, sy);
       ctx.stroke();
 
       if (isMajor) {
-        const label = tickStep >= 100 ? `${(wy / 100).toFixed(wy % 100 === 0 ? 0 : 1)}m` : `${Math.round(wy)}`;
+        const label = isOrigin ? '0' : rulerLabel(wy, tickStep, isImperial);
         ctx.save();
         ctx.translate(R - 3, sy);
         ctx.rotate(-Math.PI / 2);
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
-        ctx.fillStyle = '#6b7280';
+        ctx.fillStyle = isOrigin ? '#ef4444' : '#6b7280';
         ctx.font = `${fontSize}px sans-serif`;
         ctx.fillText(label, 0, 0);
         ctx.restore();
       }
     }
 
-    // Corner square
+    // Corner square with origin marker
     ctx.fillStyle = '#e5e7eb';
     ctx.fillRect(0, 0, R, R);
     ctx.strokeStyle = '#d1d5db';
     ctx.lineWidth = 1;
     ctx.strokeRect(0, 0, R, R);
+    // Origin crosshair in corner
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 1;
+    const cx = R / 2, cy = R / 2;
+    ctx.beginPath();
+    ctx.moveTo(cx - 4, cy); ctx.lineTo(cx + 4, cy);
+    ctx.moveTo(cx, cy - 4); ctx.lineTo(cx, cy + 4);
+    ctx.stroke();
 
-    // Mouse position indicators on rulers
+    // Mouse position indicators on rulers — thin line + triangle
     const mScreen = worldToScreen(mousePos.x, mousePos.y);
-    // Horizontal indicator
+
+    // Horizontal: thin tracking line spanning ruler height
     if (mScreen.x > R) {
+      ctx.strokeStyle = 'rgba(59,130,246,0.5)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(mScreen.x, 0);
+      ctx.lineTo(mScreen.x, R);
+      ctx.stroke();
+      // Triangle indicator
       ctx.fillStyle = '#3b82f6';
       ctx.beginPath();
       ctx.moveTo(mScreen.x, R);
@@ -978,8 +1036,16 @@
       ctx.closePath();
       ctx.fill();
     }
-    // Vertical indicator
+
+    // Vertical: thin tracking line spanning ruler width
     if (mScreen.y > R) {
+      ctx.strokeStyle = 'rgba(59,130,246,0.5)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, mScreen.y);
+      ctx.lineTo(R, mScreen.y);
+      ctx.stroke();
+      // Triangle indicator
       ctx.fillStyle = '#3b82f6';
       ctx.beginPath();
       ctx.moveTo(R, mScreen.y);
