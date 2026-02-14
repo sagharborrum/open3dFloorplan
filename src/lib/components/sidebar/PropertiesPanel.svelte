@@ -83,7 +83,7 @@
   }
   function onDoorWidth(e: Event) {
     if (!selectedDoor) return;
-    updateDoor(selectedDoor.id, { width: inputToCm(Number((e.target as HTMLInputElement).value)) });
+    updateDoor(selectedDoor.id, { width: Math.max(1, inputToCm(Number((e.target as HTMLInputElement).value)) || 1) });
   }
   function onDoorHeight(e: Event) {
     if (!selectedDoor) return;
@@ -111,7 +111,7 @@
   }
   function onWindowWidth(e: Event) {
     if (!selectedWindow) return;
-    updateWindow(selectedWindow.id, { width: inputToCm(Number((e.target as HTMLInputElement).value)) });
+    updateWindow(selectedWindow.id, { width: Math.max(1, inputToCm(Number((e.target as HTMLInputElement).value)) || 1) });
   }
   function onWindowHeight(e: Event) {
     if (!selectedWindow) return;
@@ -129,15 +129,18 @@
   }
   function onFurnitureWidth(e: Event) {
     if (!selectedFurniture) return;
-    updateFurniture(selectedFurniture.id, { width: inputToCm(Number((e.target as HTMLInputElement).value)) });
+    const v = Math.max(1, inputToCm(Number((e.target as HTMLInputElement).value)) || 1);
+    updateFurniture(selectedFurniture.id, { width: v });
   }
   function onFurnitureDepth(e: Event) {
     if (!selectedFurniture) return;
-    updateFurniture(selectedFurniture.id, { depth: inputToCm(Number((e.target as HTMLInputElement).value)) });
+    const v = Math.max(1, inputToCm(Number((e.target as HTMLInputElement).value)) || 1);
+    updateFurniture(selectedFurniture.id, { depth: v });
   }
   function onFurnitureHeight(e: Event) {
     if (!selectedFurniture) return;
-    updateFurniture(selectedFurniture.id, { height: inputToCm(Number((e.target as HTMLInputElement).value)) });
+    const v = Math.max(1, inputToCm(Number((e.target as HTMLInputElement).value)) || 1);
+    updateFurniture(selectedFurniture.id, { height: v });
   }
   function onFurnitureMaterial(e: Event) {
     if (!selectedFurniture) return;
@@ -370,7 +373,7 @@
     <div class="space-y-3">
       <label class="block">
         <span class="text-xs text-gray-500">Width ({unitLabel()})</span>
-        <input type="number" value={displayValue(selectedDoor.width)} oninput={onDoorWidth} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
+        <input type="number" value={displayValue(selectedDoor.width)} oninput={onDoorWidth} min="1" class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
       </label>
       <label class="block">
         <span class="text-xs text-gray-500">Distance from A ({unitLabel()})</span>
@@ -429,7 +432,7 @@
       </label>
       <label class="block">
         <span class="text-xs text-gray-500">Width ({unitLabel()})</span>
-        <input type="number" value={displayValue(selectedWindow.width)} oninput={onWindowWidth} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
+        <input type="number" value={displayValue(selectedWindow.width)} oninput={onWindowWidth} min="1" class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
       </label>
       <label class="block">
         <span class="text-xs text-gray-500">Distance from A ({unitLabel()})</span>
@@ -494,7 +497,7 @@
         <input 
           type="number" 
           value={displayValue(selectedFurniture.width ?? getCatalogItem(selectedFurniture.catalogId)?.width ?? 100)} 
-          oninput={onFurnitureWidth} 
+          oninput={onFurnitureWidth} min="1"
           class="w-full px-2 py-1 border border-gray-200 rounded text-sm" 
         />
       </label>
@@ -503,7 +506,7 @@
         <input 
           type="number" 
           value={displayValue(selectedFurniture.depth ?? getCatalogItem(selectedFurniture.catalogId)?.depth ?? 80)} 
-          oninput={onFurnitureDepth} 
+          oninput={onFurnitureDepth} min="1"
           class="w-full px-2 py-1 border border-gray-200 rounded text-sm" 
         />
       </label>
@@ -512,7 +515,7 @@
         <input 
           type="number" 
           value={displayValue(selectedFurniture.height ?? getCatalogItem(selectedFurniture.catalogId)?.height ?? 80)} 
-          oninput={onFurnitureHeight} 
+          oninput={onFurnitureHeight} min="1"
           class="w-full px-2 py-1 border border-gray-200 rounded text-sm" 
         />
       </label>
