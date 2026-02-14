@@ -322,10 +322,11 @@
     return results;
   }
 
-  function magneticSnap(p: Point, excludeWallIds?: Set<string>): Point & { snappedToEndpoint?: boolean } {
+  function magneticSnap(p: Point, excludeWallIds?: Set<string>): Point & { snappedToEndpoint?: boolean; snappedToWall?: boolean; snappedWallId?: string } {
     if (!currentFloor) return { x: snap(p.x), y: snap(p.y) };
-    let best: Point & { snappedToEndpoint?: boolean } = { x: snap(p.x), y: snap(p.y) };
+    let best: Point & { snappedToEndpoint?: boolean; snappedToWall?: boolean; snappedWallId?: string } = { x: snap(p.x), y: snap(p.y) };
     let bestDist = MAGNETIC_SNAP / zoom;
+    // First pass: snap to endpoints (highest priority)
     for (const w of currentFloor.walls) {
       if (excludeWallIds && excludeWallIds.has(w.id)) continue;
       for (const ep of [w.start, w.end]) {
@@ -333,6 +334,28 @@
         if (d < bestDist) {
           bestDist = d;
           best = { x: ep.x, y: ep.y, snappedToEndpoint: true };
+        }
+      }
+    }
+    // Second pass: snap to nearest point on wall segments (lower priority, only if no endpoint snap)
+    if (!best.snappedToEndpoint) {
+      const wallSnapThreshold = (MAGNETIC_SNAP + 10) / zoom;
+      let bestWallDist = wallSnapThreshold;
+      for (const w of currentFloor.walls) {
+        if (excludeWallIds && excludeWallIds.has(w.id)) continue;
+        const wx = w.end.x - w.start.x;
+        const wy = w.end.y - w.start.y;
+        const wLen = Math.hypot(wx, wy);
+        if (wLen < 1) continue;
+        // Project p onto the wall segment
+        const t = ((p.x - w.start.x) * wx + (p.y - w.start.y) * wy) / (wLen * wLen);
+        if (t < 0.02 || t > 0.98) continue; // skip near endpoints (already handled)
+        const projX = w.start.x + wx * t;
+        const projY = w.start.y + wy * t;
+        const d = Math.hypot(p.x - projX, p.y - projY);
+        if (d < bestWallDist) {
+          bestWallDist = d;
+          best = { x: projX, y: projY, snappedToWall: true, snappedWallId: w.id };
         }
       }
     }
@@ -1361,7 +1384,25 @@
     if (wallStart && currentTool === 'wall') {
       drawAngleGuides(wallStart);
       let endPt = magneticSnap(mousePos);
-      endPt = angleSnap(wallStart, endPt);
+      if (shiftDown) {
+        // Force strict angle snap when Shift is held (0°, 45°, 90°, 135°, 180°)
+        const sdx = endPt.x - wallStart.x;
+        const sdy = endPt.y - wallStart.y;
+        const slen = Math.hypot(sdx, sdy);
+        if (slen > 5) {
+          const rawAngle = Math.atan2(sdy, sdx);
+          const snapAngles = [0, Math.PI / 4, Math.PI / 2, 3 * Math.PI / 4, Math.PI, -Math.PI, -3 * Math.PI / 4, -Math.PI / 2, -Math.PI / 4];
+          let bestAngle = 0;
+          let bestDiff = Infinity;
+          for (const sa of snapAngles) {
+            const diff = Math.abs(rawAngle - sa);
+            if (diff < bestDiff) { bestDiff = diff; bestAngle = sa; }
+          }
+          endPt = { x: wallStart.x + slen * Math.cos(bestAngle), y: wallStart.y + slen * Math.sin(bestAngle) };
+        }
+      } else {
+        endPt = angleSnap(wallStart, endPt);
+      }
       const s = worldToScreen(wallStart.x, wallStart.y);
       const e = worldToScreen(endPt.x, endPt.y);
       const dx = e.x - s.x, dy = e.y - s.y;
@@ -1380,23 +1421,97 @@
         ctx.closePath(); ctx.fill(); ctx.stroke();
         ctx.setLineDash([]);
       }
+
+      // Dimension label on the wall preview (pill style)
       const plen = Math.hypot(endPt.x - wallStart.x, endPt.y - wallStart.y);
-      ctx.fillStyle = '#3b82f6';
-      ctx.font = '12px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(formatLength(plen, dimSettings.units), (s.x + e.x) / 2, (s.y + e.y) / 2 - 14);
       const angle = Math.atan2(endPt.y - wallStart.y, endPt.x - wallStart.x) * 180 / Math.PI;
-      ctx.fillText(`${Math.round(angle)}°`, (s.x + e.x) / 2, (s.y + e.y) / 2 + 16);
+      const displayAngle = ((angle % 360) + 360) % 360;
+      const dimMidX = (s.x + e.x) / 2;
+      const dimMidY = (s.y + e.y) / 2;
+      const dimText = formatLength(plen, dimSettings.units);
+      const angleText = shiftDown ? `${Math.round(displayAngle)}° ⇧` : `${Math.round(displayAngle)}°`;
+
+      // Dimension pill (on the wall)
+      ctx.font = 'bold 11px system-ui, sans-serif';
+      const dimTW = ctx.measureText(dimText).width;
+      const dimPW = dimTW + 12;
+      const dimPH = 18;
+      ctx.fillStyle = '#1e293b';
+      ctx.beginPath();
+      ctx.roundRect(dimMidX - dimPW / 2, dimMidY - dimPH / 2 - 12, dimPW, dimPH, dimPH / 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(dimText, dimMidX, dimMidY - 12);
+
+      // Angle indicator near cursor
+      const angleTW = ctx.measureText(angleText).width;
+      const anglePW = angleTW + 12;
+      const anglePH = 18;
+      const angleX = e.x + 20;
+      const angleY = e.y - 20;
+      ctx.fillStyle = shiftDown ? '#7c3aed' : '#3b82f6';
+      ctx.beginPath();
+      ctx.roundRect(angleX - anglePW / 2, angleY - anglePH / 2, anglePW, anglePH, anglePH / 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(angleText, angleX, angleY);
 
       // Snap indicator — green ring when snapping to existing endpoint
       if ((endPt as any).snappedToEndpoint) {
-        ctx.strokeStyle = '#3b82f6';
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#22c55e';
+        ctx.lineWidth = 2.5;
         ctx.beginPath();
         ctx.arc(e.x, e.y, 8, 0, Math.PI * 2);
         ctx.stroke();
-        ctx.fillStyle = '#3b82f640';
+        ctx.fillStyle = '#22c55e40';
         ctx.fill();
+      }
+
+      // Wall extension snap indicator — magenta ring + highlight target wall when snapping to wall segment
+      if ((endPt as any).snappedToWall && (endPt as any).snappedWallId && currentFloor) {
+        // Draw snap point indicator
+        ctx.strokeStyle = '#ec4899';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, 8, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = '#ec489940';
+        ctx.fill();
+        // Draw crosshair at snap point
+        ctx.strokeStyle = '#ec4899';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(e.x - 12, e.y); ctx.lineTo(e.x + 12, e.y);
+        ctx.moveTo(e.x, e.y - 12); ctx.lineTo(e.x, e.y + 12);
+        ctx.stroke();
+        // Highlight the target wall
+        const targetWall = currentFloor.walls.find(w => w.id === (endPt as any).snappedWallId);
+        if (targetWall) {
+          const tw1 = worldToScreen(targetWall.start.x, targetWall.start.y);
+          const tw2 = worldToScreen(targetWall.end.x, targetWall.end.y);
+          ctx.strokeStyle = '#ec4899';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([6, 3]);
+          ctx.beginPath();
+          ctx.moveTo(tw1.x, tw1.y);
+          ctx.lineTo(tw2.x, tw2.y);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+        // "Extend to wall" tooltip
+        ctx.font = 'bold 10px system-ui, sans-serif';
+        const extText = 'Snap to wall';
+        const extTW = ctx.measureText(extText).width;
+        ctx.fillStyle = '#ec4899';
+        ctx.beginPath();
+        ctx.roundRect(e.x - extTW / 2 - 6, e.y + 14, extTW + 12, 16, 8);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(extText, e.x, e.y + 22);
       }
     }
 
@@ -1931,7 +2046,22 @@
 
     if (tool === 'wall') {
       let endPt = magneticSnap(wp);
-      if (wallStart) endPt = angleSnap(wallStart, endPt);
+      if (wallStart) {
+        if (shiftDown) {
+          const sdx = endPt.x - wallStart.x;
+          const sdy = endPt.y - wallStart.y;
+          const slen = Math.hypot(sdx, sdy);
+          if (slen > 5) {
+            const rawAngle = Math.atan2(sdy, sdx);
+            const snapAngles = [0, Math.PI / 4, Math.PI / 2, 3 * Math.PI / 4, Math.PI, -Math.PI, -3 * Math.PI / 4, -Math.PI / 2, -Math.PI / 4];
+            let bestAngle = 0, bestDiff = Infinity;
+            for (const sa of snapAngles) { const diff = Math.abs(rawAngle - sa); if (diff < bestDiff) { bestDiff = diff; bestAngle = sa; } }
+            endPt = { x: wallStart.x + slen * Math.cos(bestAngle), y: wallStart.y + slen * Math.sin(bestAngle) };
+          }
+        } else {
+          endPt = angleSnap(wallStart, endPt);
+        }
+      }
       if (!wallStart) {
         wallStart = endPt;
         wallSequenceFirst = endPt;

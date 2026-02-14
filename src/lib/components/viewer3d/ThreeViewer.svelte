@@ -187,7 +187,7 @@
   function init() {
     scene = new THREE.Scene();
 
-    // Sky gradient background (larger for better quality)
+    // Sky dome — hemisphere with gradient texture mapped inside
     skyCanvas = document.createElement('canvas');
     skyCanvas.width = 4; skyCanvas.height = 512;
     const cx = skyCanvas.getContext('2d')!;
@@ -201,13 +201,53 @@
     cx.fillStyle = grad;
     cx.fillRect(0, 0, 4, 512);
     skyTexture = new THREE.CanvasTexture(skyCanvas);
+    // Use as scene background (maps onto equirectangular projection)
+    skyTexture.mapping = THREE.EquirectangularReflectionMapping;
     scene.background = skyTexture;
 
-    // Ground plane (extends beyond building)
-    const groundGeo = new THREE.PlaneGeometry(20000, 20000);
+    // Ground plane — textured concrete with grid overlay
+    const groundSize = 40000;
+    const groundGeo = new THREE.PlaneGeometry(groundSize, groundSize);
+    // Generate a subtle concrete texture with grid
+    const groundCanvas = document.createElement('canvas');
+    groundCanvas.width = 1024; groundCanvas.height = 1024;
+    const gctx = groundCanvas.getContext('2d')!;
+    // Base concrete color with noise
+    gctx.fillStyle = '#c8c2b8';
+    gctx.fillRect(0, 0, 1024, 1024);
+    // Add subtle noise for concrete feel
+    for (let i = 0; i < 30000; i++) {
+      const nx = Math.random() * 1024;
+      const ny = Math.random() * 1024;
+      const v = 180 + Math.random() * 30;
+      gctx.fillStyle = `rgba(${v},${v-5},${v-12},0.15)`;
+      gctx.fillRect(nx, ny, 2, 2);
+    }
+    // Grid lines every 128px (= 500cm real-world at current repeat)
+    gctx.strokeStyle = 'rgba(0,0,0,0.08)';
+    gctx.lineWidth = 1;
+    const gridStep = 128;
+    for (let x = 0; x <= 1024; x += gridStep) {
+      gctx.beginPath(); gctx.moveTo(x, 0); gctx.lineTo(x, 1024); gctx.stroke();
+    }
+    for (let y = 0; y <= 1024; y += gridStep) {
+      gctx.beginPath(); gctx.moveTo(0, y); gctx.lineTo(1024, y); gctx.stroke();
+    }
+    // Thicker lines every 4 grid cells (= 2000cm / 20m)
+    gctx.strokeStyle = 'rgba(0,0,0,0.15)';
+    gctx.lineWidth = 2;
+    for (let x = 0; x <= 1024; x += gridStep * 4) {
+      gctx.beginPath(); gctx.moveTo(x, 0); gctx.lineTo(x, 1024); gctx.stroke();
+    }
+    for (let y = 0; y <= 1024; y += gridStep * 4) {
+      gctx.beginPath(); gctx.moveTo(0, y); gctx.lineTo(1024, y); gctx.stroke();
+    }
+    const groundTex = new THREE.CanvasTexture(groundCanvas);
+    groundTex.wrapS = groundTex.wrapT = THREE.RepeatWrapping;
+    groundTex.repeat.set(groundSize / 4000, groundSize / 4000);
     const groundMat = new THREE.MeshStandardMaterial({
-      color: 0xd4cfc4,
-      roughness: 0.95,
+      map: groundTex,
+      roughness: 0.92,
       metalness: 0
     });
     const ground = new THREE.Mesh(groundGeo, groundMat);
