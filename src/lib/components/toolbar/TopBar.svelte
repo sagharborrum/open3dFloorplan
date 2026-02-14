@@ -6,6 +6,7 @@
   import type { Floor, Project } from '$lib/models/types';
   import { exportAsPNG, exportAsJSON, exportAsSVG, exportPDF } from '$lib/utils/export';
   import { exportDXF, exportDWG } from '$lib/utils/cadExport';
+  import { importRoomPlan } from '$lib/utils/roomplanImport';
   import SettingsDialog from './SettingsDialog.svelte';
 
   let settingsOpen = $state(false);
@@ -134,20 +135,34 @@
   function onImportJSON() {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.json';
+    input.accept = '.json,.zip';
     input.onchange = async () => {
       const file = input.files?.[0];
       if (!file) return;
       try {
         const text = await file.text();
-        const project = JSON.parse(text) as Project;
-        if (!project.floors || !project.id) {
-          alert('Invalid project file.');
-          return;
+        const data = JSON.parse(text);
+        // Detect RoomPlan format (has walls array with dimensions, or rooms/doors/windows at top level)
+        if (data.walls && Array.isArray(data.walls) && data.walls[0]?.dimensions) {
+          // RoomPlan JSON — import as new project
+          const floor = importRoomPlan(data, { straighten: true, orthogonal: true });
+          const project: Project = {
+            id: Math.random().toString(36).slice(2, 10),
+            name: file.name.replace(/\.(json|zip)$/, ''),
+            floors: [floor],
+            activeFloorId: floor.id,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          };
+          loadProject(project);
+        } else if (data.floors && data.id) {
+          // Our own project format
+          loadProject(data as Project);
+        } else {
+          alert('Unrecognized file format. Expected a project file or Apple RoomPlan JSON.');
         }
-        loadProject(project);
-      } catch {
-        alert('Failed to parse project file.');
+      } catch (e: any) {
+        alert('Failed to import: ' + e.message);
       }
     };
     input.click();
