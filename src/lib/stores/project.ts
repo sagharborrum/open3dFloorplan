@@ -42,8 +42,25 @@ export const selectedElementIds = writable<Set<string>>(new Set());
 export const viewMode = writable<'2d' | '3d'>('2d');
 
 // Undo / Redo
-const undoStack: string[] = [];
-const redoStack: string[] = [];
+interface UndoEntry {
+  state: string;
+  description: string;
+  timestamp: number;
+}
+const undoStack: UndoEntry[] = [];
+const redoStack: UndoEntry[] = [];
+
+/** Reactive store exposing undo history for the UndoHistoryPanel */
+export const undoHistoryStore = writable<{ entries: { description: string; timestamp: number }[]; currentIndex: number }>({ entries: [], currentIndex: -1 });
+
+function syncHistoryStore() {
+  const entries = undoStack.map(e => ({ description: e.description, timestamp: e.timestamp }));
+  // currentIndex: undoStack.length means "current state" (top), entries are past states
+  undoHistoryStore.set({ entries, currentIndex: undoStack.length });
+}
+
+/** Current undo action description — set before calling mutate/snapshot */
+let _nextDescription = '';
 
 // Undo grouping: batch multiple mutations into a single undo entry
 let undoGroupSnapshot: string | null = null;
@@ -59,24 +76,28 @@ export function beginUndoGroup() {
 }
 
 /** End an undo group. Commits a single undo entry from the state captured at beginUndoGroup(). */
-export function endUndoGroup() {
+export function endUndoGroup(description?: string) {
   if (undoGroupDepth <= 0) return;
   undoGroupDepth--;
   if (undoGroupDepth === 0 && undoGroupSnapshot !== null) {
-    undoStack.push(undoGroupSnapshot);
+    undoStack.push({ state: undoGroupSnapshot, description: description || _nextDescription || 'Group action', timestamp: Date.now() });
     if (undoStack.length > 50) undoStack.shift();
     redoStack.length = 0;
     undoGroupSnapshot = null;
+    _nextDescription = '';
+    syncHistoryStore();
   }
 }
 
-function snapshot() {
+function snapshot(description?: string) {
   // If inside an undo group, skip — the group handles the snapshot
   if (undoGroupDepth > 0) return;
   const p = get(currentProject);
-  if (p) undoStack.push(JSON.stringify(p));
+  if (p) undoStack.push({ state: JSON.stringify(p), description: description || _nextDescription || 'Edit', timestamp: Date.now() });
   if (undoStack.length > 50) undoStack.shift();
   redoStack.length = 0;
+  _nextDescription = '';
+  syncHistoryStore();
 }
 
 function reviveDates(p: Project): Project {
@@ -89,22 +110,48 @@ export function undo() {
   const prev = undoStack.pop();
   if (!prev) return;
   const cur = get(currentProject);
-  if (cur) redoStack.push(JSON.stringify(cur));
-  currentProject.set(reviveDates(JSON.parse(prev)));
+  if (cur) redoStack.push({ state: JSON.stringify(cur), description: prev.description, timestamp: prev.timestamp });
+  currentProject.set(reviveDates(JSON.parse(prev.state)));
+  syncHistoryStore();
 }
 
 export function redo() {
   const next = redoStack.pop();
   if (!next) return;
   const cur = get(currentProject);
-  if (cur) undoStack.push(JSON.stringify(cur));
-  currentProject.set(reviveDates(JSON.parse(next)));
+  if (cur) undoStack.push({ state: JSON.stringify(cur), description: next.description, timestamp: next.timestamp });
+  currentProject.set(reviveDates(JSON.parse(next.state)));
+  syncHistoryStore();
 }
 
-function mutate(fn: (floor: Floor) => void) {
+/** Jump to a specific undo history step by index (0 = oldest) */
+export function jumpToUndoStep(targetIndex: number) {
+  const total = undoStack.length; // total past states; current state is at index `total`
+  if (targetIndex < 0 || targetIndex > total) return;
+  if (targetIndex === total) return; // already at current state
+
+  // We need to go back (total - targetIndex) steps
+  // First, save current state to redo
+  const cur = get(currentProject);
+  if (!cur) return;
+
+  // Push current + all states between current and target onto redo
+  const stepsBack = total - targetIndex;
+  // Move states from undoStack to redoStack
+  redoStack.push({ state: JSON.stringify(cur), description: 'Current state', timestamp: Date.now() });
+  for (let i = 0; i < stepsBack - 1; i++) {
+    const entry = undoStack.pop()!;
+    redoStack.push(entry);
+  }
+  const target = undoStack.pop()!;
+  currentProject.set(reviveDates(JSON.parse(target.state)));
+  syncHistoryStore();
+}
+
+function mutate(fn: (floor: Floor) => void, description?: string) {
   const p = get(currentProject);
   if (!p) return;
-  snapshot();
+  snapshot(description);
   const floor = p.floors.find((f) => f.id === p.activeFloorId);
   if (!floor) return;
   fn(floor);
@@ -116,7 +163,7 @@ export function addWall(start: Point, end: Point): string {
   const id = uid();
   mutate((f) => {
     f.walls.push({ id, start, end, thickness: 15, height: 280, color: '#444444' });
-  });
+  }, 'Added wall');
   return id;
 }
 
@@ -125,7 +172,7 @@ export function removeWall(id: string) {
     f.walls = f.walls.filter((w) => w.id !== id);
     f.doors = f.doors.filter((d) => d.wallId !== id);
     f.windows = f.windows.filter((w) => w.wallId !== id);
-  });
+  }, 'Deleted wall');
 }
 
 export function addDoor(wallId: string, position: number, doorType: Door['type'] = 'single'): string {
@@ -141,7 +188,7 @@ export function addDoor(wallId: string, position: number, doorType: Door['type']
   const { width, height } = defaults[doorType];
   mutate((f) => {
     f.doors.push({ id, wallId, position, width, height, type: doorType, swingDirection: 'left', flipSide: false });
-  });
+  }, `Added ${doorType} door`);
   return id;
 }
 
@@ -157,7 +204,7 @@ export function addWindow(wallId: string, position: number, windowType: import('
   const { width, height } = defaults[windowType];
   mutate((f) => {
     f.windows.push({ id, wallId, position, width, height, sillHeight: 90, type: windowType });
-  });
+  }, `Added ${windowType} window`);
   return id;
 }
 
@@ -165,13 +212,13 @@ export function addFurniture(catalogId: string, position: Point): string {
   const id = uid();
   mutate((f) => {
     f.furniture.push({ id, catalogId, position, rotation: 0, scale: { x: 1, y: 1, z: 1 } });
-  });
+  }, `Added ${catalogId}`);
   return id;
 }
 
 /** Snapshot the current state before a drag begins (call once at drag start) */
-export function beginDrag() {
-  snapshot();
+export function beginDrag(description = 'Moved element') {
+  snapshot(description);
 }
 
 /** Move furniture without creating an undo snapshot on every call (used during drag).
@@ -192,14 +239,14 @@ export function moveFurniture(id: string, position: Point) {
 /** Snapshot the current state before a drag begins (call once at drag start).
  *  Alias for beginDrag() for backward compatibility. */
 export function commitFurnitureMove() {
-  snapshot();
+  snapshot('Moved furniture');
 }
 
 export function rotateFurniture(id: string, angle: number) {
   mutate((f) => {
     const item = f.furniture.find((fi) => fi.id === id);
     if (item) item.rotation = (item.rotation + angle) % 360;
-  });
+  }, 'Rotated furniture');
 }
 
 export function setFurnitureRotation(id: string, angle: number) {
@@ -221,7 +268,7 @@ export function scaleFurniture(id: string, scale: { x: number; y: number }) {
 export function removeFurniture(id: string) {
   mutate((f) => {
     f.furniture = f.furniture.filter((fi) => fi.id !== id);
-  });
+  }, 'Deleted furniture');
 }
 
 // Stairs
@@ -230,7 +277,7 @@ export function addStair(position: Point): string {
   mutate((f) => {
     if (!f.stairs) f.stairs = [];
     f.stairs.push({ id, position, rotation: 0, width: 100, depth: 300, riserCount: 14, direction: 'up', stairType: 'straight' });
-  });
+  }, 'Added stair');
   return id;
 }
 
@@ -281,7 +328,7 @@ export function addColumn(position: Point, shape: 'round' | 'square' = 'round'):
   mutate((f) => {
     if (!f.columns) f.columns = [];
     f.columns.push({ id, position, rotation: 0, shape, diameter: 30, height: 280, color: '#cccccc' });
-  });
+  }, `Added ${shape} column`);
   return id;
 }
 
@@ -340,7 +387,7 @@ export function removeElement(id: string) {
     if (f.stairs) f.stairs = f.stairs.filter((s) => s.id !== id);
     if (f.columns) f.columns = f.columns.filter((c) => c.id !== id);
     if (f.textAnnotations) f.textAnnotations = f.textAnnotations.filter((t) => t.id !== id);
-  });
+  }, 'Deleted element');
 }
 
 /** Move a wall endpoint without creating an undo snapshot (for dragging) */
@@ -404,7 +451,7 @@ export function updateRoom(id: string, updates: Partial<{ name: string; floorTex
 export function addFloor(name?: string, copyCurrentLayout = false) {
   const p = get(currentProject);
   if (!p) return;
-  snapshot();
+  snapshot('Added floor');
   const level = p.floors.length;
   const floor: Floor = { id: uid(), name: name ?? `Floor ${level}`, level, walls: [], rooms: [], doors: [], windows: [], furniture: [], stairs: [], columns: [], guides: [], measurements: [], annotations: [], textAnnotations: [], groups: [] };
   if (copyCurrentLayout) {
@@ -422,7 +469,7 @@ export function addFloor(name?: string, copyCurrentLayout = false) {
 export function removeFloor(id: string) {
   const p = get(currentProject);
   if (!p || p.floors.length <= 1) return;
-  snapshot();
+  snapshot('Removed floor');
   p.floors = p.floors.filter(f => f.id !== id);
   if (p.activeFloorId === id) {
     p.activeFloorId = p.floors[0].id;
@@ -452,15 +499,17 @@ export function loadProject(project: Project) {
   undoStack.length = 0;
   redoStack.length = 0;
   currentProject.set(project);
+  syncHistoryStore();
 }
 
 /** Import a floor's data into the current project's active floor (replaces walls/doors/windows/furniture) */
 export function importFloorIntoCurrentProject(floor: import('$lib/models/types').Floor) {
   const p = get(currentProject);
   if (!p) return;
-  snapshot();
+  snapshot('Imported floor');
   const activeFloorIdx = p.floors.findIndex((f) => f.id === p.activeFloorId);
   if (activeFloorIdx === -1) return;
+  // snapshot was already called above via snapshot('Imported floor')
   const existing = p.floors[activeFloorIdx];
   // Merge imported data into the active floor
   existing.walls = [...existing.walls, ...floor.walls];
@@ -558,7 +607,7 @@ export function splitWall(id: string, t: number): string | null {
   const w = floor.walls.find((w) => w.id === id);
   if (!w || w.curvePoint) return null; // don't split curved walls
   if (t <= 0.001 || t >= 0.999) return null; // prevent division by zero at extremes
-  snapshot();
+  snapshot('Split wall');
   const midPt: Point = {
     x: w.start.x + (w.end.x - w.start.x) * t,
     y: w.start.y + (w.end.y - w.start.y) * t,

@@ -10,6 +10,10 @@
   let showLayers = $state(false);
   import FloorPlanCanvas from '$lib/components/editor/FloorPlanCanvas.svelte';
   import AlignmentToolbar from '$lib/components/editor/AlignmentToolbar.svelte';
+  import UndoHistoryPanel from '$lib/components/editor/UndoHistoryPanel.svelte';
+  import CommandPalette from '$lib/components/editor/CommandPalette.svelte';
+
+  let commandPaletteOpen = $state(false);
 
   // Lazy-load ThreeViewer to avoid loading Three.js (~1.4MB) until 3D mode is activated
   let ThreeViewer: any = $state(null);
@@ -22,6 +26,7 @@
   let mode = $state<'2d' | '3d'>('2d');
   let ready = $state(false);
   let showHelp = $state(false);
+  let showUndoHistory = $state(false);
 
   viewMode.subscribe((m) => {
     mode = m;
@@ -66,7 +71,7 @@
   });
 </script>
 
-<svelte:window on:keydown={(e) => { if (e.key === '?' && !e.ctrlKey && !e.metaKey) { showHelp = !showHelp; e.preventDefault(); } if (e.key === 'Escape' && showHelp) { showHelp = false; } if (e.key === 'l' && !e.ctrlKey && !e.metaKey && !e.altKey && (e.target as HTMLElement)?.tagName !== 'INPUT') { showLayers = !showLayers; } }} />
+<svelte:window on:keydown={(e) => { if ((e.key === 'k' && (e.ctrlKey || e.metaKey)) || (e.key === '/' && !e.ctrlKey && !e.metaKey && (e.target as HTMLElement)?.tagName !== 'INPUT' && (e.target as HTMLElement)?.tagName !== 'TEXTAREA')) { e.preventDefault(); commandPaletteOpen = !commandPaletteOpen; } if (e.key === '?' && !e.ctrlKey && !e.metaKey) { showHelp = !showHelp; e.preventDefault(); } if (e.key === 'Escape' && showHelp) { showHelp = false; } if (e.key === 'l' && !e.ctrlKey && !e.metaKey && !e.altKey && (e.target as HTMLElement)?.tagName !== 'INPUT') { showLayers = !showLayers; } }} />
 
 {#if ready}
   <div class="h-screen flex flex-col overflow-hidden">
@@ -107,6 +112,20 @@
       aria-label="Toggle Layers Panel"
     >🗂</button>
   {/if}
+
+  <!-- Undo History toggle button -->
+  <button
+    class="fixed bottom-4 left-24 w-8 h-8 rounded-full shadow-lg hover:bg-slate-600 transition-colors z-50 text-sm"
+    class:bg-blue-600={showUndoHistory}
+    class:text-white={showUndoHistory}
+    class:bg-slate-700={!showUndoHistory}
+    class:text-gray-300={!showUndoHistory}
+    onclick={() => showUndoHistory = !showUndoHistory}
+    title="Undo History"
+    aria-label="Toggle Undo History"
+  >⟲</button>
+
+  <UndoHistoryPanel bind:visible={showUndoHistory} />
 
   <!-- Help button -->
   <button
@@ -286,6 +305,8 @@
       </div>
     </div>
   {/if}
+
+  <CommandPalette bind:open={commandPaletteOpen} />
 {:else}
   <div class="h-screen flex items-center justify-center">
     <p class="text-gray-400">Loading...</p>

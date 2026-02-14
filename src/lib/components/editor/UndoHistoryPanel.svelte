@@ -1,0 +1,74 @@
+<script lang="ts">
+  import { undoHistoryStore, jumpToUndoStep } from '$lib/stores/project';
+
+  let { visible = $bindable(false) } : { visible?: boolean } = $props();
+
+  let history = $state<{ entries: { description: string; timestamp: number }[]; currentIndex: number }>({ entries: [], currentIndex: -1 });
+
+  undoHistoryStore.subscribe((h) => { history = h; });
+
+  function formatTime(ts: number) {
+    const d = new Date(ts);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+
+  function handleClick(index: number) {
+    jumpToUndoStep(index);
+  }
+</script>
+
+{#if visible}
+  <div class="fixed bottom-12 left-4 w-64 max-h-80 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 flex flex-col overflow-hidden">
+    <!-- Header -->
+    <div class="flex items-center justify-between px-3 py-2 border-b border-gray-100 bg-gray-50">
+      <div class="flex items-center gap-1.5">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-slate-500"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+        <span class="text-xs font-semibold text-slate-700">Undo History</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-[10px] text-slate-400">
+          Step {history.currentIndex} of {history.entries.length}
+        </span>
+        <button
+          class="text-gray-400 hover:text-gray-600 text-sm leading-none"
+          onclick={() => visible = false}
+          aria-label="Close history"
+        >✕</button>
+      </div>
+    </div>
+
+    <!-- Steps list -->
+    <div class="flex-1 overflow-y-auto">
+      {#if history.entries.length === 0}
+        <div class="px-3 py-6 text-center text-xs text-gray-400">No history yet</div>
+      {:else}
+        <div class="py-1">
+          {#each history.entries as entry, i}
+            <button
+              class="w-full px-3 py-1.5 text-left flex items-center gap-2 text-xs hover:bg-blue-50 transition-colors"
+              class:bg-blue-100={i === history.currentIndex}
+              class:text-blue-700={i === history.currentIndex}
+              class:text-gray-500={i > history.currentIndex}
+              class:text-gray-700={i < history.currentIndex && i !== history.currentIndex}
+              onclick={() => handleClick(i)}
+            >
+              <span class="w-5 text-[10px] text-gray-400 text-right shrink-0">{i + 1}</span>
+              <span class="truncate flex-1">{entry.description}</span>
+              <span class="text-[10px] text-gray-300 shrink-0">{formatTime(entry.timestamp)}</span>
+            </button>
+          {/each}
+          <!-- Current state indicator -->
+          <div
+            class="w-full px-3 py-1.5 flex items-center gap-2 text-xs"
+            class:bg-blue-100={history.currentIndex === history.entries.length}
+            class:text-blue-700={history.currentIndex === history.entries.length}
+            class:text-gray-700={history.currentIndex !== history.entries.length}
+          >
+            <span class="w-5 text-[10px] text-gray-400 text-right shrink-0">●</span>
+            <span class="truncate flex-1 font-medium">Current state</span>
+          </div>
+        </div>
+      {/if}
+    </div>
+  </div>
+{/if}
