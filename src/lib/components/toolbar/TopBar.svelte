@@ -8,6 +8,7 @@
   import { exportDXF, exportDWG } from '$lib/utils/cadExport';
   import { importRoomPlan } from '$lib/utils/roomplanImport';
   import SettingsDialog from './SettingsDialog.svelte';
+  import { saveState, lastSavedAt, manualSave, initAutoSave } from '$lib/stores/saveStatus';
 
   let settingsOpen = $state(false);
 
@@ -52,11 +53,21 @@
   }
 
   async function save() {
-    const p = get(currentProject);
-    if (p) {
-      await localStore.save(p);
-      alert('Project saved!');
-    }
+    await manualSave();
+  }
+
+  // Relative time for tooltip
+  let lastSavedText = $state('');
+  let lastSavedTime: Date | null = $state(null);
+  lastSavedAt.subscribe(v => { lastSavedTime = v; updateLastSavedText(); });
+
+  function updateLastSavedText() {
+    if (!lastSavedTime) { lastSavedText = ''; return; }
+    const diff = Math.floor((Date.now() - lastSavedTime.getTime()) / 1000);
+    if (diff < 5) lastSavedText = 'Last saved: just now';
+    else if (diff < 60) lastSavedText = `Last saved: ${diff}s ago`;
+    else if (diff < 3600) lastSavedText = `Last saved: ${Math.floor(diff / 60)} min ago`;
+    else lastSavedText = `Last saved: ${Math.floor(diff / 3600)}h ago`;
   }
 
   function onExport2DPNG() {
@@ -123,13 +134,21 @@
   }
 
   onMount(() => {
+    initAutoSave();
+
+    // Update relative timestamp every 15s
+    const interval = setInterval(updateLastSavedText, 15000);
+
     function handleClickOutside(e: MouseEvent) {
       if (exportOpen && exportRef && !exportRef.contains(e.target as Node)) {
         exportOpen = false;
       }
     }
     document.addEventListener('click', handleClickOutside, true);
-    return () => document.removeEventListener('click', handleClickOutside, true);
+    return () => {
+      document.removeEventListener('click', handleClickOutside, true);
+      clearInterval(interval);
+    };
   });
 
   function onImportJSON() {
@@ -370,7 +389,18 @@
     {/if}
   </div>
 
-  <span class="text-[10px] text-white/40">auto-saved</span>
+  <span
+    class="text-[11px] font-medium transition-all duration-300 {$saveState === 'saved' ? 'text-emerald-400' : $saveState === 'saving' ? 'text-amber-300 animate-pulse' : 'text-white/50'}"
+    title={lastSavedText || 'Not saved yet'}
+  >
+    {#if $saveState === 'saving'}
+      Saving…
+    {:else if $saveState === 'saved'}
+      Saved ✓
+    {:else}
+      Unsaved •
+    {/if}
+  </span>
   <button onclick={save} class="px-3 py-1.5 text-sm bg-white text-slate-800 font-semibold rounded-lg hover:bg-blue-50 transition-colors shadow-sm">
     Save
   </button>

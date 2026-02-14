@@ -5,6 +5,9 @@
   import TopBar from '$lib/components/toolbar/TopBar.svelte';
   import BuildPanel from '$lib/components/sidebar/BuildPanel.svelte';
   import PropertiesPanel from '$lib/components/sidebar/PropertiesPanel.svelte';
+  import LayersPanel from '$lib/components/sidebar/LayersPanel.svelte';
+
+  let showLayers = $state(false);
   import FloorPlanCanvas from '$lib/components/editor/FloorPlanCanvas.svelte';
   import ThreeViewer from '$lib/components/viewer3d/ThreeViewer.svelte';
 
@@ -55,7 +58,7 @@
   });
 </script>
 
-<svelte:window on:keydown={(e) => { if (e.key === '?' && !e.ctrlKey && !e.metaKey) { showHelp = !showHelp; e.preventDefault(); } if (e.key === 'Escape' && showHelp) { showHelp = false; } }} />
+<svelte:window on:keydown={(e) => { if (e.key === '?' && !e.ctrlKey && !e.metaKey) { showHelp = !showHelp; e.preventDefault(); } if (e.key === 'Escape' && showHelp) { showHelp = false; } if (e.key === 'l' && !e.ctrlKey && !e.metaKey && !e.altKey && (e.target as HTMLElement)?.tagName !== 'INPUT') { showLayers = !showLayers; } }} />
 
 {#if ready}
   <div class="h-screen flex flex-col overflow-hidden">
@@ -71,9 +74,26 @@
           <ThreeViewer />
         {/if}
       </div>
+      {#if showLayers && mode === '2d'}
+        <LayersPanel />
+      {/if}
       <PropertiesPanel is3D={mode === '3d'} />
     </div>
   </div>
+
+  <!-- Layers toggle button -->
+  {#if mode === '2d'}
+    <button
+      class="fixed bottom-4 left-14 w-8 h-8 rounded-full shadow-lg hover:bg-slate-600 transition-colors z-50 text-sm"
+      class:bg-blue-600={showLayers}
+      class:text-white={showLayers}
+      class:bg-slate-700={!showLayers}
+      class:text-gray-300={!showLayers}
+      onclick={() => showLayers = !showLayers}
+      title="Layers Panel (L)"
+      aria-label="Toggle Layers Panel"
+    >🗂</button>
+  {/if}
 
   <!-- Help button -->
   <button

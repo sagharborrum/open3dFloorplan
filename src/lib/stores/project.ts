@@ -633,6 +633,11 @@ export function removeGuide(id: string) {
   });
 }
 
+// Layer visibility store (used by LayersPanel and FloorPlanCanvas)
+export const layerVisibility = writable<{ walls: boolean; doors: boolean; windows: boolean; furniture: boolean; stairs: boolean; columns: boolean; guides: boolean }>({
+  walls: true, doors: true, windows: true, furniture: true, stairs: true, columns: true, guides: true,
+});
+
 // Zoom store for 2D canvas — shared between FloorPlanCanvas and TopBar
 export const canvasZoom = writable<number>(1);
 // Camera position stores for 2D canvas — used to compute viewport center

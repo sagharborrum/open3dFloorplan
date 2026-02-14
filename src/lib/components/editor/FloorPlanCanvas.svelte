@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { activeFloor, selectedTool, selectedElementId, selectedElementIds, selectedRoomId, addWall, addDoor, addWindow, updateWall, moveWallEndpoint, updateDoor, updateWindow, addFurniture, moveFurniture, commitFurnitureMove, rotateFurniture, setFurnitureRotation, scaleFurniture, removeElement, placingFurnitureId, placingRotation, placingDoorType, placingWindowType, detectedRoomsStore, duplicateDoor, duplicateWindow, duplicateFurniture, duplicateWall, moveWallParallel, splitWall, snapEnabled, placingStair, addStair, moveStair, updateStair, placingColumn, placingColumnShape, addColumn, moveColumn, updateColumn, calibrationMode, calibrationPoints, updateBackgroundImage, canvasZoom, canvasCamX, canvasCamY, panMode, showFurnitureStore, addGuide, moveGuide, removeGuide, beginUndoGroup, endUndoGroup } from '$lib/stores/project';
+  import { activeFloor, selectedTool, selectedElementId, selectedElementIds, selectedRoomId, addWall, addDoor, addWindow, updateWall, moveWallEndpoint, updateDoor, updateWindow, addFurniture, moveFurniture, commitFurnitureMove, rotateFurniture, setFurnitureRotation, scaleFurniture, removeElement, placingFurnitureId, placingRotation, placingDoorType, placingWindowType, detectedRoomsStore, duplicateDoor, duplicateWindow, duplicateFurniture, duplicateWall, moveWallParallel, splitWall, snapEnabled, placingStair, addStair, moveStair, updateStair, placingColumn, placingColumnShape, addColumn, moveColumn, updateColumn, calibrationMode, calibrationPoints, updateBackgroundImage, canvasZoom, canvasCamX, canvasCamY, panMode, showFurnitureStore, addGuide, moveGuide, removeGuide, beginUndoGroup, endUndoGroup, layerVisibility } from '$lib/stores/project';
   import type { Point, Wall, Door, Window as Win, FurnitureItem, Stair, Column, GuideLine } from '$lib/models/types';
   import type { Floor, Room } from '$lib/models/types';
   import { detectRooms, getRoomPolygon, roomCentroid } from '$lib/utils/roomDetection';
@@ -62,9 +62,13 @@
   let showRulers = $state(true);
 
   // Layer visibility toggles
-  let showFurniture = $derived($showFurnitureStore);
-  let showDoors = $state(true);
-  let showWindows = $state(true);
+  let layerVis = $state({ walls: true, doors: true, windows: true, furniture: true, stairs: true, columns: true, guides: true });
+  layerVisibility.subscribe(v => { layerVis = v; });
+  // Sync showFurnitureStore ↔ layerVisibility.furniture
+  let showFurniture = $derived(layerVis.furniture);
+  $effect(() => { showFurnitureStore.set(layerVis.furniture); });
+  let showDoors = $derived(layerVis.doors);
+  let showWindows = $derived(layerVis.windows);
   let showRoomLabels = $state(true);
   let showDimensions = $state(true);
   let dimSettings: ProjectSettings = $state({
@@ -76,7 +80,7 @@
     dimSettings = s;
     showDimensions = s.showDimensions;
   });
-  let showStairs = $state(true);
+  let showStairs = $derived(layerVis.stairs);
   let showLayerPanel = $state(false);
   let showMinimap = $state(true);
   let minimapCanvas: HTMLCanvasElement;
@@ -1967,7 +1971,7 @@
     ctx.fillStyle = '#f8f9fa';
     ctx.fillRect(0, 0, width, height);
     drawGrid();
-    drawGuides();
+    if (layerVis.guides) drawGuides();
     drawBackgroundImage();
 
     const floor = currentFloor;
@@ -1981,10 +1985,10 @@
     drawRooms();
     drawSnapPoints();
 
-    for (const w of floor.walls) drawWall(w, isSelected(w.id));
-
-    // Draw filled joints where walls share endpoints (covers corner gaps)
-    drawWallJoints(floor, selId);
+    if (layerVis.walls) {
+      for (const w of floor.walls) drawWall(w, isSelected(w.id));
+      drawWallJoints(floor, selId);
+    }
 
     if (showDoors) {
       for (const d of floor.doors) {
@@ -2158,7 +2162,7 @@
     }
 
     // Columns
-    if (floor.columns) {
+    if (layerVis.columns && floor.columns) {
       for (const col of floor.columns) {
         drawColumn(col, isSelected(col.id));
       }
@@ -3762,22 +3766,13 @@
   {#if showLayerPanel}
     <div class="absolute bottom-12 right-2 z-20 bg-white rounded-lg shadow-lg border border-gray-200 p-3 text-xs min-w-[160px]">
       <div class="font-semibold text-gray-700 mb-2">Layers</div>
-      <label class="flex items-center gap-2 py-0.5 cursor-pointer hover:bg-gray-50 rounded px-1">
-        <input type="checkbox" checked={showFurniture} onchange={() => showFurnitureStore.update(v => !v)} class="accent-blue-500" />
-        <span>Furniture</span>
-      </label>
-      <label class="flex items-center gap-2 py-0.5 cursor-pointer hover:bg-gray-50 rounded px-1">
-        <input type="checkbox" bind:checked={showDoors} class="accent-blue-500" />
-        <span>Doors</span>
-      </label>
-      <label class="flex items-center gap-2 py-0.5 cursor-pointer hover:bg-gray-50 rounded px-1">
-        <input type="checkbox" bind:checked={showWindows} class="accent-blue-500" />
-        <span>Windows</span>
-      </label>
-      <label class="flex items-center gap-2 py-0.5 cursor-pointer hover:bg-gray-50 rounded px-1">
-        <input type="checkbox" bind:checked={showStairs} class="accent-blue-500" />
-        <span>Stairs</span>
-      </label>
+      {#each [['walls','Walls'],['doors','Doors'],['windows','Windows'],['furniture','Furniture'],['stairs','Stairs'],['columns','Columns'],['guides','Guides']] as [key, label]}
+        <label class="flex items-center gap-2 py-0.5 cursor-pointer hover:bg-gray-50 rounded px-1">
+          <input type="checkbox" checked={layerVis[key]} onchange={() => layerVisibility.update(v => ({ ...v, [key]: !v[key] }))} class="accent-blue-500" />
+          <span>{label}</span>
+        </label>
+      {/each}
+      <hr class="my-1 border-gray-100" />
       <label class="flex items-center gap-2 py-0.5 cursor-pointer hover:bg-gray-50 rounded px-1">
         <input type="checkbox" bind:checked={showRoomLabels} class="accent-blue-500" />
         <span>Room Labels</span>
