@@ -248,6 +248,18 @@ export function exportAsSVG(project: Project) {
     paths += `  </g>\n`;
   }
 
+  // Measurements
+  if (floor.measurements) {
+    for (const m of floor.measurements) {
+      const x1 = m.x1 - minX + pad, y1 = m.y1 - minY + pad;
+      const x2 = m.x2 - minX + pad, y2 = m.y2 - minY + pad;
+      paths += `  <line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#ef4444" stroke-width="1" stroke-dasharray="6,3" stroke-linecap="round"/>\n`;
+      const dist = Math.round(Math.hypot(m.x2 - m.x1, m.y2 - m.y1));
+      const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+      paths += `  <text x="${mx}" y="${my - 6}" text-anchor="middle" font-size="10" fill="#ef4444" font-family="sans-serif" font-weight="bold">${dist} cm</text>\n`;
+    }
+  }
+
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${vw} ${vh}" width="${vw}" height="${vh}">
   <rect width="100%" height="100%" fill="white"/>

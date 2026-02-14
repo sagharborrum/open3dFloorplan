@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
-  import { activeFloor, detectedRoomsStore, selectedElementId } from '$lib/stores/project';
+  import { activeFloor, currentProject, detectedRoomsStore, selectedElementId } from '$lib/stores/project';
   import type { Floor, Wall, Door, Window as Win, Room, Stair } from '$lib/models/types';
   import { wallColors, type WallColor } from '$lib/utils/materials';
   import { projectSettings, formatArea } from '$lib/stores/settings';
@@ -37,6 +37,9 @@
   let editMode = $state(false);
   // Wall transparency toggle
   let wallsTransparent = $state(false);
+  // Multi-floor stacking
+  let showAllFloors = $state(false);
+  const FLOOR_HEIGHT = 300; // cm — wall height + slab thickness
 
   // Walkthrough mode
   let walkthroughMode = $state(false);
@@ -907,6 +910,161 @@
     autoCenterCamera(floor);
   }
 
+  /** Build all floors stacked vertically in 3D */
+  function buildAllFloorsStacked() {
+    const project = get(currentProject);
+    if (!project || project.floors.length === 0) return;
+    
+    // Use buildWalls for the active floor first (it clears wallGroup)
+    const activeF = project.floors.find(f => f.id === project.activeFloorId) ?? project.floors[0];
+    buildWalls(activeF);
+    
+    // Now add other floors at Y offsets
+    for (let i = 0; i < project.floors.length; i++) {
+      const floor = project.floors[i];
+      if (floor.id === activeF.id) {
+        // Active floor is already built at Y=0, move it to its correct offset
+        // We need to offset all current wallGroup children
+        const yOffset = i * FLOOR_HEIGHT;
+        if (yOffset !== 0) {
+          // Move existing children up
+          for (const child of [...wallGroup.children]) {
+            child.position.y += yOffset;
+          }
+        }
+        // Add floor label
+        addFloorLabel(i, floor.name || (i === 0 ? 'Ground Floor' : `Floor ${i}`), i * FLOOR_HEIGHT);
+        continue;
+      }
+      
+      // Build non-active floor into a temporary group, then merge with transparency
+      const tempGroup = new THREE.Group();
+      buildFloorIntoGroup(floor, tempGroup, i * FLOOR_HEIGHT, 0.35);
+      
+      // Add floor label
+      addFloorLabel(i, floor.name || (i === 0 ? 'Ground Floor' : `Floor ${i}`), i * FLOOR_HEIGHT);
+      
+      // Move children from temp group to wallGroup
+      while (tempGroup.children.length > 0) {
+        const child = tempGroup.children[0];
+        tempGroup.remove(child);
+        wallGroup.add(child);
+      }
+    }
+    
+    // Re-center camera to encompass all floors
+    autoCenterCameraAllFloors(project.floors.length);
+  }
+  
+  function addFloorLabel(floorIndex: number, name: string, yOffset: number) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256; canvas.height = 48;
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.roundRect(0, 0, 256, 48, 8);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 24px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(name, 128, 32);
+    
+    const tex = new THREE.CanvasTexture(canvas);
+    const spriteMat = new THREE.SpriteMaterial({ map: tex, transparent: true });
+    const sprite = new THREE.Sprite(spriteMat);
+    
+    // Position label to the side of the building
+    const box = new THREE.Box3().setFromObject(wallGroup);
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    sprite.position.set(center.x - size.x / 2 - 200, yOffset + 130, center.z);
+    sprite.scale.set(200, 40, 1);
+    wallGroup.add(sprite);
+  }
+  
+  /** Build a single floor's walls/doors/windows into a group at a Y offset with optional transparency */
+  function buildFloorIntoGroup(floor: Floor, group: THREE.Group, yOffset: number, opacity: number) {
+    const transparentMat = (color: number, roughness = 0.9) => new THREE.MeshStandardMaterial({
+      color, roughness, transparent: true, opacity,
+      polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1
+    });
+    
+    const defaultInteriorMat = transparentMat(0xffffff);
+    const defaultExteriorMat = transparentMat(0xd4cfc9, 0.85);
+
+    for (const wall of floor.walls) {
+      const dx = wall.end.x - wall.start.x;
+      const dy = wall.end.y - wall.start.y;
+      const len = Math.hypot(dx, dy);
+      if (len < 1) continue;
+
+      const h = wall.height;
+      const t = Math.max(wall.thickness, WALL_THICKNESS);
+      const angle = Math.atan2(dy, dx);
+      const cx = (wall.start.x + wall.end.x) / 2;
+      const cy = (wall.start.y + wall.end.y) / 2;
+
+      const doorOpenings = floor.doors.filter((d) => d.wallId === wall.id);
+      const winOpenings = floor.windows.filter((w) => w.wallId === wall.id);
+      const segments = buildWallSegments(len, h, t, doorOpenings, winOpenings);
+
+      const materials = [
+        defaultExteriorMat, defaultExteriorMat,
+        defaultInteriorMat, defaultInteriorMat,
+        defaultInteriorMat, defaultExteriorMat,
+      ];
+
+      for (const seg of segments) {
+        const geo = new THREE.BoxGeometry(seg.width, seg.height, t);
+        const mesh = new THREE.Mesh(geo, materials);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        const localX = seg.offsetX - len / 2;
+        mesh.position.set(
+          cx + localX * Math.cos(angle),
+          seg.height / 2 + seg.offsetY + yOffset,
+          cy + localX * Math.sin(angle)
+        );
+        mesh.rotation.y = -angle;
+        group.add(mesh);
+      }
+    }
+    
+    // Simple floor slab
+    if (floor.walls.length > 0) {
+      let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+      for (const w of floor.walls) {
+        for (const p of [w.start, w.end]) {
+          minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+          minZ = Math.min(minZ, p.y); maxZ = Math.max(maxZ, p.y);
+        }
+      }
+      const slabGeo = new THREE.BoxGeometry(maxX - minX + 40, 5, maxZ - minZ + 40);
+      const slabMat = transparentMat(0xcccccc, 0.95);
+      const slab = new THREE.Mesh(slabGeo, slabMat);
+      slab.position.set((minX + maxX) / 2, yOffset, (minZ + maxZ) / 2);
+      slab.receiveShadow = true;
+      group.add(slab);
+    }
+  }
+  
+  function autoCenterCameraAllFloors(floorCount: number) {
+    const box = new THREE.Box3().setFromObject(wallGroup);
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z, 400);
+    controls.target.copy(center);
+    camera.position.set(center.x + maxDim * 1.2, center.y + maxDim * 0.8, center.z + maxDim * 1.2);
+    controls.update();
+  }
+  
+  function rebuildScene() {
+    if (showAllFloors) {
+      buildAllFloorsStacked();
+    } else if (currentFloor) {
+      buildWalls(currentFloor);
+    }
+  }
+
   interface WallSegment {
     width: number;
     height: number;
@@ -1151,7 +1309,7 @@
 
     // Rebuild 3D scene when photo textures finish loading
     setTextureLoadCallback(() => {
-      if (currentFloor) buildWalls(currentFloor);
+      if (currentFloor) rebuildScene();
     });
 
     const resizeObs = new ResizeObserver(onResize);
@@ -1159,7 +1317,7 @@
 
     const unsub = activeFloor.subscribe((f) => {
       currentFloor = f;
-      if (f) buildWalls(f);
+      if (f) rebuildScene();
     });
 
     const unsubRooms = detectedRoomsStore.subscribe((rooms) => {
@@ -1218,6 +1376,20 @@
 </script>
 
 <div bind:this={container} class="w-full h-full relative">
+  <!-- Multi-Floor Stacking Toggle -->
+  <button
+    onclick={() => { showAllFloors = !showAllFloors; rebuildScene(); }}
+    class="absolute top-4 right-64 z-50 p-2 rounded-lg transition-colors {showAllFloors ? 'bg-purple-600 text-white ring-2 ring-purple-300' : 'bg-black/70 text-white hover:bg-black/80'}"
+    title={showAllFloors ? 'Active Floor Only' : 'Show All Floors Stacked'}
+    aria-label={showAllFloors ? 'Active Floor Only' : 'Show All Floors Stacked'}
+  >
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="4" y="14" width="16" height="4" rx="1"/>
+      <rect x="4" y="8" width="16" height="4" rx="1" opacity="0.6"/>
+      <rect x="4" y="2" width="16" height="4" rx="1" opacity="0.3"/>
+    </svg>
+  </button>
+
   <!-- Top-Down View Button -->
   <button
     onclick={viewTopDown}

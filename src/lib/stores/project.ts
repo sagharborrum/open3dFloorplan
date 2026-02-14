@@ -8,7 +8,7 @@ function uid(): string {
 
 export function createDefaultFloor(level = 0): Floor {
   const id = uid();
-  return { id, name: level === 0 ? 'Ground Floor' : `Floor ${level}`, level, walls: [], rooms: [], doors: [], windows: [], furniture: [], stairs: [], columns: [], guides: [] };
+  return { id, name: level === 0 ? 'Ground Floor' : `Floor ${level}`, level, walls: [], rooms: [], doors: [], windows: [], furniture: [], stairs: [], columns: [], guides: [], measurements: [] };
 }
 
 export function createDefaultProject(name = 'Untitled Project'): Project {
@@ -633,9 +633,26 @@ export function removeGuide(id: string) {
   });
 }
 
+// --- Measurements ---
+export function addMeasurement(x1: number, y1: number, x2: number, y2: number): string {
+  const id = uid();
+  mutate(f => {
+    if (!f.measurements) f.measurements = [];
+    f.measurements.push({ id, x1, y1, x2, y2 });
+  });
+  return id;
+}
+
+export function removeMeasurement(id: string) {
+  mutate(f => {
+    if (!f.measurements) return;
+    f.measurements = f.measurements.filter(m => m.id !== id);
+  });
+}
+
 // Layer visibility store (used by LayersPanel and FloorPlanCanvas)
-export const layerVisibility = writable<{ walls: boolean; doors: boolean; windows: boolean; furniture: boolean; stairs: boolean; columns: boolean; guides: boolean }>({
-  walls: true, doors: true, windows: true, furniture: true, stairs: true, columns: true, guides: true,
+export const layerVisibility = writable<{ walls: boolean; doors: boolean; windows: boolean; furniture: boolean; stairs: boolean; columns: boolean; guides: boolean; measurements: boolean }>({
+  walls: true, doors: true, windows: true, furniture: true, stairs: true, columns: true, guides: true, measurements: true,
 });
 
 // Zoom store for 2D canvas — shared between FloorPlanCanvas and TopBar

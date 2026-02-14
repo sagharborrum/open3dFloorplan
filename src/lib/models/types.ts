@@ -85,6 +85,14 @@ export interface Column {
   color: string;
 }
 
+export interface Measurement {
+  id: string;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+}
+
 export interface GuideLine {
   id: string;
   orientation: 'horizontal' | 'vertical';
@@ -113,6 +121,7 @@ export interface Floor {
   columns: Column[];
   backgroundImage?: BackgroundImage;
   guides: GuideLine[];
+  measurements: Measurement[];
 }
 
 export interface Project {

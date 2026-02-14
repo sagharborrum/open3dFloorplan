@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { activeFloor, selectedTool, selectedElementId, selectedElementIds, selectedRoomId, addWall, addDoor, addWindow, updateWall, moveWallEndpoint, updateDoor, updateWindow, addFurniture, moveFurniture, commitFurnitureMove, rotateFurniture, setFurnitureRotation, scaleFurniture, removeElement, placingFurnitureId, placingRotation, placingDoorType, placingWindowType, detectedRoomsStore, duplicateDoor, duplicateWindow, duplicateFurniture, duplicateWall, moveWallParallel, splitWall, snapEnabled, placingStair, addStair, moveStair, updateStair, placingColumn, placingColumnShape, addColumn, moveColumn, updateColumn, calibrationMode, calibrationPoints, updateBackgroundImage, canvasZoom, canvasCamX, canvasCamY, panMode, showFurnitureStore, addGuide, moveGuide, removeGuide, beginUndoGroup, endUndoGroup, layerVisibility, updateRoom } from '$lib/stores/project';
-  import type { Point, Wall, Door, Window as Win, FurnitureItem, Stair, Column, GuideLine } from '$lib/models/types';
+  import { activeFloor, selectedTool, selectedElementId, selectedElementIds, selectedRoomId, addWall, addDoor, addWindow, updateWall, moveWallEndpoint, updateDoor, updateWindow, addFurniture, moveFurniture, commitFurnitureMove, rotateFurniture, setFurnitureRotation, scaleFurniture, removeElement, placingFurnitureId, placingRotation, placingDoorType, placingWindowType, detectedRoomsStore, duplicateDoor, duplicateWindow, duplicateFurniture, duplicateWall, moveWallParallel, splitWall, snapEnabled, placingStair, addStair, moveStair, updateStair, placingColumn, placingColumnShape, addColumn, moveColumn, updateColumn, calibrationMode, calibrationPoints, updateBackgroundImage, canvasZoom, canvasCamX, canvasCamY, panMode, showFurnitureStore, addGuide, moveGuide, removeGuide, beginUndoGroup, endUndoGroup, layerVisibility, updateRoom, addMeasurement, removeMeasurement } from '$lib/stores/project';
+  import type { Point, Wall, Door, Window as Win, FurnitureItem, Stair, Column, GuideLine, Measurement } from '$lib/models/types';
   import type { Floor, Room } from '$lib/models/types';
   import { detectRooms, getRoomPolygon, roomCentroid } from '$lib/utils/roomDetection';
   import { getMaterial } from '$lib/utils/materials';
@@ -59,6 +59,7 @@
   let measureStart: Point | null = $state(null);
   let measureEnd: Point | null = $state(null);
   let measuring = $state(false);
+  let selectedMeasurementId: string | null = $state(null);
 
   // Grid toggle
   let showGrid = $state(true);
@@ -67,7 +68,7 @@
   let showRulers = $state(true);
 
   // Layer visibility toggles
-  let layerVis = $state({ walls: true, doors: true, windows: true, furniture: true, stairs: true, columns: true, guides: true });
+  let layerVis = $state({ walls: true, doors: true, windows: true, furniture: true, stairs: true, columns: true, guides: true, measurements: true });
   layerVisibility.subscribe(v => { layerVis = v; });
   // Sync showFurnitureStore ↔ layerVisibility.furniture
   let showFurniture = $derived(layerVis.furniture);
@@ -1539,6 +1540,53 @@
     ctx.fillText(formatLength(dist, dimSettings.units), mx, my - 6);
   }
 
+  function drawPersistedMeasurements(floor: Floor) {
+    if (!floor.measurements) return;
+    for (const m of floor.measurements) {
+      const s = worldToScreen(m.x1, m.y1);
+      const e = worldToScreen(m.x2, m.y2);
+      const selected = m.id === selectedMeasurementId;
+      ctx.strokeStyle = selected ? '#3b82f6' : '#ef4444';
+      ctx.lineWidth = selected ? 2 : 1;
+      ctx.setLineDash([6, 3]);
+      ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(e.x, e.y); ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Endpoints
+      for (const p of [s, e]) {
+        ctx.fillStyle = selected ? '#3b82f6' : '#ef4444';
+        ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI * 2); ctx.fill();
+      }
+
+      // Distance label
+      const dist = Math.hypot(m.x2 - m.x1, m.y2 - m.y1);
+      const mx = (s.x + e.x) / 2;
+      const my = (s.y + e.y) / 2;
+      ctx.fillStyle = selected ? '#3b82f6' : '#ef4444';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(formatLength(dist, dimSettings.units), mx, my - 6);
+    }
+  }
+
+  function hitTestMeasurement(wp: Point, floor: Floor): string | null {
+    if (!floor.measurements) return null;
+    const threshold = 8 / zoom;
+    for (const m of floor.measurements) {
+      // Point-to-segment distance
+      const dx = m.x2 - m.x1, dy = m.y2 - m.y1;
+      const len2 = dx * dx + dy * dy;
+      if (len2 === 0) continue;
+      let t = ((wp.x - m.x1) * dx + (wp.y - m.y1) * dy) / len2;
+      t = Math.max(0, Math.min(1, t));
+      const px = m.x1 + t * dx, py = m.y1 + t * dy;
+      const dist = Math.hypot(wp.x - px, wp.y - py);
+      if (dist < threshold) return m.id;
+    }
+    return null;
+  }
+
   function drawWallJoints(floor: Floor, selId: string | null) {
     // Find endpoints shared by 2+ walls and draw filled circles to cover corner gaps
     const epMap = new Map<string, { x: number; y: number; thickness: number; selected: boolean }[]>();
@@ -2791,7 +2839,9 @@
       }
     }
 
-    // Measurement
+    // Persisted measurements
+    if (layerVis.measurements && floor) drawPersistedMeasurements(floor);
+    // Active measurement
     if (measureStart && measuring) drawMeasurement();
 
     // Drag preview ghost
@@ -3223,6 +3273,17 @@
       }
       // Click elsewhere deselects guide
       selectedGuideId = null;
+    }
+
+    // Measurement click detection (select)
+    if (tool === 'select' && currentFloor) {
+      const hitId = hitTestMeasurement(wp, currentFloor);
+      if (hitId) {
+        selectedMeasurementId = hitId;
+        selectedElementId.set(null);
+        return;
+      }
+      selectedMeasurementId = null;
     }
 
     // Calibration mode click
@@ -3878,6 +3939,14 @@
       return;
     }
 
+    // Delete selected measurement
+    if ((e.key === 'Delete' || e.key === 'Backspace') && selectedMeasurementId) {
+      removeMeasurement(selectedMeasurementId);
+      selectedMeasurementId = null;
+      e.preventDefault();
+      return;
+    }
+
     // Canvas-specific Escape handling (before global shortcut eats it)
     if (e.code === 'Escape') {
       wallStart = null; wallSequenceFirst = null;
@@ -4123,6 +4192,10 @@
       measuring = true;
     } else {
       measureEnd = wp;
+      // Persist the measurement
+      addMeasurement(measureStart.x, measureStart.y, wp.x, wp.y);
+      measureStart = null;
+      measureEnd = null;
     }
   }
 
@@ -4256,7 +4329,7 @@
   {#if showLayerPanel}
     <div class="absolute bottom-12 right-2 z-20 bg-white rounded-lg shadow-lg border border-gray-200 p-3 text-xs min-w-[160px]">
       <div class="font-semibold text-gray-700 mb-2">Layers</div>
-      {#each [['walls','Walls'],['doors','Doors'],['windows','Windows'],['furniture','Furniture'],['stairs','Stairs'],['columns','Columns'],['guides','Guides']] as [key, label]}
+      {#each [['walls','Walls'],['doors','Doors'],['windows','Windows'],['furniture','Furniture'],['stairs','Stairs'],['columns','Columns'],['guides','Guides'],['measurements','Measurements']] as [key, label]}
         <label class="flex items-center gap-2 py-0.5 cursor-pointer hover:bg-gray-50 rounded px-1">
           <input type="checkbox" checked={layerVis[key]} onchange={() => layerVisibility.update(v => ({ ...v, [key]: !v[key] }))} class="accent-blue-500" />
           <span>{label}</span>

@@ -9,7 +9,7 @@
   let selId: string | null = $state(null);
   selectedElementId.subscribe(id => { selId = id; });
 
-  let vis = $state({ walls: true, doors: true, windows: true, furniture: true, stairs: true, columns: true, guides: true });
+  let vis = $state({ walls: true, doors: true, windows: true, furniture: true, stairs: true, columns: true, guides: true, measurements: true });
   layerVisibility.subscribe(v => { vis = v; });
 
   // Collapsed state per category
@@ -79,6 +79,16 @@
       cats.push({
         key: 'guides', label: 'Guides', icon: '📏',
         items: floor.guides.map((g, i) => ({ id: g.id, label: `${g.orientation} guide ${i + 1}`, icon: g.orientation === 'horizontal' ? '─' : '│' })),
+      });
+    }
+
+    if (floor.measurements?.length) {
+      cats.push({
+        key: 'measurements', label: 'Measurements', icon: '📐',
+        items: floor.measurements.map((m, i) => {
+          const dist = Math.round(Math.hypot(m.x2 - m.x1, m.y2 - m.y1));
+          return { id: m.id, label: `Measurement ${i + 1} (${dist} cm)`, icon: '📐' };
+        }),
       });
     }
 
