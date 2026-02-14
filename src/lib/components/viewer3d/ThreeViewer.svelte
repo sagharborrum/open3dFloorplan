@@ -346,7 +346,7 @@
             createGhostPreview(selectedCatalogId);
           }
           if (ghostGroup) {
-            ghostGroup.position.set(hit.x, 0, hit.z);
+            ghostGroup.position.set(hit.x, 1.5, hit.z);
             ghostGroup.visible = true;
           }
         } else if (ghostGroup) {
@@ -1040,7 +1040,7 @@
         // Re-render when GLB model finishes loading
         if (renderer && scene && camera) renderer.render(scene, camera);
       });
-      model.position.set(fi.position.x, 0, fi.position.y);
+      model.position.set(fi.position.x, 1.5, fi.position.y);
       model.rotation.y = -(fi.rotation * Math.PI) / 180;
       // Note: fi.scale is 2D editor scale — don't override 3D model scaling from scaleToFit
       if (fi.scale && (fi.scale.x !== 1 || fi.scale.y !== 1)) {
