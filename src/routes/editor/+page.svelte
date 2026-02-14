@@ -10,6 +10,7 @@
   let showLayers = $state(false);
   import FloorPlanCanvas from '$lib/components/editor/FloorPlanCanvas.svelte';
   import ThreeViewer from '$lib/components/viewer3d/ThreeViewer.svelte';
+  import AlignmentToolbar from '$lib/components/editor/AlignmentToolbar.svelte';
 
   let mode = $state<'2d' | '3d'>('2d');
   let ready = $state(false);
@@ -70,6 +71,7 @@
       <div class="flex-1 min-w-0 relative">
         {#if mode === '2d'}
           <FloorPlanCanvas />
+          <AlignmentToolbar />
         {:else}
           <ThreeViewer />
         {/if}

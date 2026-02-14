@@ -3,6 +3,7 @@
   import type { Tool } from '$lib/stores/project';
   import type { Door, Window as Win } from '$lib/models/types';
   import { roomPresets, placePreset } from '$lib/utils/roomPresets';
+  import { roomTemplates, placeRoomTemplate } from '$lib/utils/roomTemplates';
   import { furnitureCatalog, furnitureCategories } from '$lib/utils/furnitureCatalog';
   import type { FurnitureDef } from '$lib/utils/furnitureCatalog';
   import { getModelFile, generateThumbnail, getThumbnail, preloadThumbnails } from '$lib/utils/furnitureThumbnails';
@@ -43,14 +44,14 @@
   let currentPlacing = $state<string | null>(null);
   placingFurnitureId.subscribe((id) => { currentPlacing = id; });
 
-  function onPresetClick(presetId: string) {
+  function onPresetClick(presetId: string, templateName?: string) {
     const preset = roomPresets.find(p => p.id === presetId);
     if (preset) {
-      // Place at viewport center (camera position = world center of view)
       let cx = 0, cy = 0;
       canvasCamX.subscribe(v => { cx = v; })();
       canvasCamY.subscribe(v => { cy = v; })();
-      placePreset(preset, { x: cx, y: cy });
+      const template = templateName ? roomTemplates.find(t => t.name === templateName) ?? null : null;
+      placeRoomTemplate(preset, { x: cx, y: cy }, template);
     }
   }
 
@@ -58,6 +59,8 @@
     selectedTool.set('furniture');
     placingFurnitureId.set(item.id);
   }
+
+  let withFurniture = $state(true);
 
   let search = $state('');
 
@@ -390,6 +393,34 @@
             >
               <div class="w-12 h-12 rounded-lg bg-gray-50 flex items-center justify-center text-2xl font-mono">{preset.icon}</div>
               <span class="text-xs font-medium text-gray-600">{preset.name}</span>
+            </button>
+          {/each}
+        </div>
+
+        <hr class="my-3 border-gray-200" />
+
+        <h3 class="text-xs font-semibold text-gray-400 uppercase mb-2">Room Templates</h3>
+        <p class="text-xs text-gray-400 mb-3">Pre-furnished rooms — walls + furniture in one click</p>
+        <div class="grid grid-cols-2 gap-2">
+          {#each roomTemplates as tmpl}
+            <button
+              class="flex flex-col items-center gap-1.5 p-3 rounded-lg border-2 border-gray-100 hover:border-green-300 hover:bg-green-50 transition-colors cursor-grab active:cursor-grabbing"
+              onclick={() => onPresetClick(tmpl.presetId, tmpl.name)}
+              draggable="true"
+              ondragstart={(e) => { e.dataTransfer?.setData('application/o3d-type', 'room-template'); e.dataTransfer?.setData('application/o3d-id', tmpl.name); }}
+            >
+              <div class="w-12 h-12 rounded-lg bg-green-50 flex items-center justify-center text-lg">
+                {#if tmpl.name === 'Living Room'}🛋️
+                {:else if tmpl.name === 'Bedroom'}🛏️
+                {:else if tmpl.name === 'Kitchen'}🍳
+                {:else if tmpl.name === 'Bathroom'}🛁
+                {:else if tmpl.name === 'Office'}🖥️
+                {:else if tmpl.name === 'Dining Room'}🍽️
+                {:else}🏠
+                {/if}
+              </div>
+              <span class="text-xs font-medium text-gray-600">{tmpl.name}</span>
+              <span class="text-[10px] text-gray-400">{tmpl.furniture.length} items</span>
             </button>
           {/each}
         </div>
