@@ -86,6 +86,139 @@
   let skyCanvas: HTMLCanvasElement;
   let skyTexture: THREE.CanvasTexture;
 
+  // Interior Camera placement
+  let cameraPlacementMode = $state(false);
+  let interiorCamera: THREE.PerspectiveCamera | null = null;
+  let cameraHelper: THREE.Group | null = null;
+  let cameraPosition = $state<{ x: number; y: number; z: number }>({ x: 0, y: 160, z: 0 });
+  let cameraLookAt = $state<{ x: number; y: number; z: number }>({ x: 100, y: 120, z: 0 });
+  let cameraFOV = $state(90);
+  let cameraHeight = $state(160);
+  let cameraPreviewOpen = $state(false);
+  let cameraPreviewCanvas: HTMLCanvasElement | null = null;
+  let cameraPreviewRenderer: THREE.WebGLRenderer | null = null;
+  let cameraPlaced = $state(false);
+  let cameraDragMode = $state<'position' | 'lookat' | null>(null);
+
+  function createCameraMarker(pos: THREE.Vector3, lookAt: THREE.Vector3) {
+    if (cameraHelper) wallGroup.remove(cameraHelper);
+    cameraHelper = new THREE.Group();
+    cameraHelper.name = 'interior_camera';
+
+    // Camera body — small box
+    const bodyGeo = new THREE.BoxGeometry(20, 15, 25);
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.3, metalness: 0.5 });
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    body.position.copy(pos);
+    body.position.y = cameraHeight;
+    cameraHelper.add(body);
+
+    // Lens — cylinder
+    const lensGeo = new THREE.CylinderGeometry(6, 8, 10, 8);
+    const lensMat = new THREE.MeshStandardMaterial({ color: 0x1e40af, roughness: 0.1, metalness: 0.7 });
+    const lens = new THREE.Mesh(lensGeo, lensMat);
+    lens.rotation.z = Math.PI / 2;
+    const dir = new THREE.Vector3().subVectors(lookAt, pos).normalize();
+    lens.position.copy(pos);
+    lens.position.y = cameraHeight;
+    lens.position.add(dir.clone().multiplyScalar(17));
+    lens.lookAt(lookAt.x, cameraHeight, lookAt.z);
+    lens.rotateX(Math.PI / 2);
+    cameraHelper.add(lens);
+
+    // Direction line
+    const lineGeo = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(pos.x, cameraHeight, pos.z),
+      new THREE.Vector3(lookAt.x, cameraHeight * 0.75, lookAt.z)
+    ]);
+    const lineMat = new THREE.LineBasicMaterial({ color: 0x3b82f6, linewidth: 2 });
+    const line = new THREE.Line(lineGeo, lineMat);
+    cameraHelper.add(line);
+
+    // FOV cone wireframe
+    const halfFov = (cameraFOV / 2) * Math.PI / 180;
+    const coneLen = 150;
+    const coneW = Math.tan(halfFov) * coneLen;
+    const conePoints = [
+      new THREE.Vector3(pos.x, cameraHeight, pos.z),
+      new THREE.Vector3(pos.x + dir.x * coneLen + dir.z * coneW, cameraHeight, pos.z + dir.z * coneLen - dir.x * coneW),
+      new THREE.Vector3(pos.x, cameraHeight, pos.z),
+      new THREE.Vector3(pos.x + dir.x * coneLen - dir.z * coneW, cameraHeight, pos.z + dir.z * coneLen + dir.x * coneW),
+    ];
+    const coneGeo = new THREE.BufferGeometry().setFromPoints(conePoints);
+    const coneLine = new THREE.LineSegments(coneGeo, new THREE.LineBasicMaterial({ color: 0x60a5fa, transparent: true, opacity: 0.6 }));
+    cameraHelper.add(coneLine);
+
+    // Target marker — small sphere
+    const targetGeo = new THREE.SphereGeometry(5, 8, 8);
+    const targetMat = new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xef4444, emissiveIntensity: 0.3 });
+    const target = new THREE.Mesh(targetGeo, targetMat);
+    target.position.set(lookAt.x, cameraHeight * 0.75, lookAt.z);
+    cameraHelper.add(target);
+
+    wallGroup.add(cameraHelper);
+    markSceneDirty();
+  }
+
+  function updateInteriorCamera() {
+    if (!interiorCamera) {
+      interiorCamera = new THREE.PerspectiveCamera(cameraFOV, 16 / 9, 1, 5000);
+    }
+    interiorCamera.fov = cameraFOV;
+    interiorCamera.position.set(cameraPosition.x, cameraHeight, cameraPosition.z);
+    interiorCamera.lookAt(cameraLookAt.x, cameraHeight * 0.75, cameraLookAt.z);
+    interiorCamera.updateProjectionMatrix();
+  }
+
+  function captureInteriorPhoto() {
+    if (!scene || !interiorCamera) return;
+    updateInteriorCamera();
+
+    // Create high-res offscreen renderer
+    const width = 1920;
+    const height = 1080;
+    const offRenderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true, alpha: false });
+    offRenderer.setSize(width, height);
+    offRenderer.setPixelRatio(1);
+    offRenderer.shadowMap.enabled = true;
+    offRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    offRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+    offRenderer.toneMappingExposure = 1.0;
+
+    // Hide camera marker during capture
+    if (cameraHelper) cameraHelper.visible = false;
+
+    offRenderer.render(scene, interiorCamera);
+
+    if (cameraHelper) cameraHelper.visible = true;
+
+    const dataUrl = offRenderer.domElement.toDataURL('image/png');
+    offRenderer.dispose();
+
+    // Download
+    const link = document.createElement('a');
+    const projectName = get(currentProject)?.name ?? 'floorplan';
+    link.download = `${projectName}-interior-photo.png`;
+    link.href = dataUrl;
+    link.click();
+  }
+
+  function renderCameraPreview() {
+    if (!cameraPreviewCanvas || !scene || !interiorCamera) return;
+    updateInteriorCamera();
+
+    if (!cameraPreviewRenderer) {
+      cameraPreviewRenderer = new THREE.WebGLRenderer({ canvas: cameraPreviewCanvas, antialias: true, alpha: false });
+      cameraPreviewRenderer.shadowMap.enabled = true;
+      cameraPreviewRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+    }
+    cameraPreviewRenderer.setSize(384, 216);
+
+    if (cameraHelper) cameraHelper.visible = false;
+    cameraPreviewRenderer.render(scene, interiorCamera);
+    if (cameraHelper) cameraHelper.visible = true;
+  }
+
   // 3D Furniture Placement
   let furniturePlacementMode = $state(false);
   let furniturePickerOpen = $state(false);
@@ -296,6 +429,34 @@
       mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
       raycaster.setFromCamera(mouse, camera);
+
+      // Camera placement mode: first click = position, second click = look-at target
+      if (cameraPlacementMode) {
+        const hit = new THREE.Vector3();
+        if (raycaster.ray.intersectPlane(floorPlane, hit)) {
+          if (!cameraPlaced) {
+            // First click: place camera position
+            cameraPosition = { x: hit.x, y: cameraHeight, z: hit.z };
+            cameraLookAt = { x: hit.x + 200, y: cameraHeight * 0.75, z: hit.z };
+            cameraPlaced = true;
+            updateInteriorCamera();
+            createCameraMarker(new THREE.Vector3(hit.x, 0, hit.z), new THREE.Vector3(hit.x + 200, 0, hit.z));
+            cameraPreviewOpen = true;
+            setTimeout(renderCameraPreview, 100);
+          } else {
+            // Second click: set look-at direction
+            cameraLookAt = { x: hit.x, y: cameraHeight * 0.75, z: hit.z };
+            updateInteriorCamera();
+            createCameraMarker(
+              new THREE.Vector3(cameraPosition.x, 0, cameraPosition.z),
+              new THREE.Vector3(hit.x, 0, hit.z)
+            );
+            cameraPlacementMode = false;
+            setTimeout(renderCameraPreview, 100);
+          }
+        }
+        return;
+      }
 
       // Furniture placement mode: place on floor
       if (furniturePlacementMode && selectedCatalogId) {
@@ -1681,82 +1842,107 @@
 </script>
 
 <div bind:this={container} class="w-full h-full relative">
-  <!-- Multi-Floor Stacking Toggle -->
-  <button
-    onclick={() => { showAllFloors = !showAllFloors; rebuildScene(); }}
-    class="absolute top-4 right-64 z-50 p-2 rounded-lg transition-colors {showAllFloors ? 'bg-purple-600 text-white ring-2 ring-purple-300' : 'bg-black/70 text-white hover:bg-black/80'}"
-    title={showAllFloors ? 'Active Floor Only' : 'Show All Floors Stacked'}
-    aria-label={showAllFloors ? 'Active Floor Only' : 'Show All Floors Stacked'}
-  >
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <rect x="4" y="14" width="16" height="4" rx="1"/>
-      <rect x="4" y="8" width="16" height="4" rx="1" opacity="0.6"/>
-      <rect x="4" y="2" width="16" height="4" rx="1" opacity="0.3"/>
-    </svg>
-  </button>
+  <!-- 3D Toolbar Row -->
+  <div class="absolute top-4 right-4 z-50 flex gap-1.5">
+    <!-- Multi-Floor Stacking Toggle -->
+    <button
+      onclick={() => { showAllFloors = !showAllFloors; rebuildScene(); }}
+      class="p-2 rounded-lg transition-colors {showAllFloors ? 'bg-purple-600 text-white ring-2 ring-purple-300' : 'bg-black/70 text-white hover:bg-black/80'}"
+      title={showAllFloors ? 'Active Floor Only' : 'Show All Floors Stacked'}
+      aria-label={showAllFloors ? 'Active Floor Only' : 'Show All Floors Stacked'}
+    >
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="4" y="14" width="16" height="4" rx="1"/>
+        <rect x="4" y="8" width="16" height="4" rx="1" opacity="0.6"/>
+        <rect x="4" y="2" width="16" height="4" rx="1" opacity="0.3"/>
+      </svg>
+    </button>
 
-  <!-- Top-Down View Button -->
-  <button
-    onclick={viewTopDown}
-    class="absolute top-4 right-52 z-50 bg-black/70 text-white p-2 rounded-lg hover:bg-black/80 transition-colors"
-    title="Top-Down View"
-    aria-label="Top-Down View"
-  >
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <circle cx="12" cy="12" r="10"/>
-      <line x1="12" y1="2" x2="12" y2="6"/>
-      <line x1="12" y1="18" x2="12" y2="22"/>
-      <line x1="2" y1="12" x2="6" y2="12"/>
-      <line x1="18" y1="12" x2="22" y2="12"/>
-    </svg>
-  </button>
+    <!-- Top-Down View Button -->
+    <button
+      onclick={viewTopDown}
+      class="p-2 rounded-lg bg-black/70 text-white hover:bg-black/80 transition-colors"
+      title="Top-Down View"
+      aria-label="Top-Down View"
+    >
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="2" x2="12" y2="6"/>
+        <line x1="12" y1="18" x2="12" y2="22"/>
+        <line x1="2" y1="12" x2="6" y2="12"/>
+        <line x1="18" y1="12" x2="22" y2="12"/>
+      </svg>
+    </button>
 
-  <!-- Wall Transparency Toggle -->
-  <button
-    onclick={toggleWallTransparency}
-    class="absolute top-4 right-40 z-50 p-2 rounded-lg transition-colors {wallsTransparent ? 'bg-blue-600 text-white ring-2 ring-blue-300' : 'bg-black/70 text-white hover:bg-black/80'}"
-    title={wallsTransparent ? 'Show Solid Walls' : 'Make Walls Transparent'}
-    aria-label={wallsTransparent ? 'Show Solid Walls' : 'Make Walls Transparent'}
-  >
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <rect x="3" y="3" width="18" height="18" rx="2" opacity={wallsTransparent ? 0.3 : 1}/>
-      <line x1="3" y1="12" x2="21" y2="12"/>
-      <line x1="12" y1="3" x2="12" y2="21"/>
-    </svg>
-  </button>
+    <!-- Wall Transparency Toggle -->
+    <button
+      onclick={toggleWallTransparency}
+      class="p-2 rounded-lg transition-colors {wallsTransparent ? 'bg-blue-600 text-white ring-2 ring-blue-300' : 'bg-black/70 text-white hover:bg-black/80'}"
+      title={wallsTransparent ? 'Show Solid Walls' : 'Make Walls Transparent'}
+      aria-label={wallsTransparent ? 'Show Solid Walls' : 'Make Walls Transparent'}
+    >
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="18" height="18" rx="2" opacity={wallsTransparent ? 0.3 : 1}/>
+        <line x1="3" y1="12" x2="21" y2="12"/>
+        <line x1="12" y1="3" x2="12" y2="21"/>
+      </svg>
+    </button>
 
-  <!-- Edit Mode Toggle -->
-  <button
-    onclick={() => { editMode = !editMode; if (editMode && walkthroughMode) { exitWalkthroughMode(); } if (!editMode) { selectedElementId.set(null); materialPickerWall = null; materialPickerPos = null; } }}
-    class="absolute top-4 right-28 z-50 p-2 rounded-lg transition-colors {editMode ? 'bg-blue-600 text-white ring-2 ring-blue-300' : 'bg-black/70 text-white hover:bg-black/80'}"
-    title={editMode ? 'Exit Edit Mode' : 'Edit Mode — click to select walls & change materials'}
-    aria-label={editMode ? 'Exit Edit Mode' : 'Edit Mode'}
-  >
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-    </svg>
-  </button>
+    <!-- Edit Mode Toggle -->
+    <button
+      onclick={() => { editMode = !editMode; if (editMode && walkthroughMode) { exitWalkthroughMode(); } if (!editMode) { selectedElementId.set(null); materialPickerWall = null; materialPickerPos = null; } }}
+      class="p-2 rounded-lg transition-colors {editMode ? 'bg-blue-600 text-white ring-2 ring-blue-300' : 'bg-black/70 text-white hover:bg-black/80'}"
+      title={editMode ? 'Exit Edit Mode' : 'Edit Mode — click to select walls & change materials'}
+      aria-label={editMode ? 'Exit Edit Mode' : 'Edit Mode'}
+    >
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+      </svg>
+    </button>
 
-  <!-- 3D Screenshot Button -->
-  <button
-    onclick={takeScreenshot}
-    class="absolute top-4 right-16 z-50 bg-black/70 text-white p-2 rounded-lg hover:bg-black/80 transition-colors"
-    title="Save 3D Screenshot"
-    aria-label="Save 3D Screenshot"
-  >
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-      <circle cx="12" cy="13" r="4"/>
-    </svg>
-  </button>
+    <!-- Interior Camera Button -->
+    <button
+      onclick={() => {
+        if (cameraPlacementMode) {
+          cameraPlacementMode = false;
+        } else {
+          cameraPlacementMode = true;
+          cameraPlaced = false;
+          editMode = true;
+          if (walkthroughMode) exitWalkthroughMode();
+          furniturePlacementMode = false;
+        }
+      }}
+      class="p-2 rounded-lg transition-colors {cameraPlacementMode ? 'bg-blue-600 text-white ring-2 ring-blue-300' : 'bg-black/70 text-white hover:bg-black/80'}"
+      title={cameraPlacementMode ? 'Cancel camera placement (click floor to place)' : 'Place Interior Camera — click floor to position, click again to aim'}
+      aria-label="Place Interior Camera"
+    >
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M23 7l-7 5 7 5V7z"/>
+        <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+      </svg>
+    </button>
 
-  <!-- Walkthrough Mode Toggle Button -->
-  <button
-    onclick={toggleWalkthroughMode}
-    class="absolute top-4 right-4 z-50 bg-black/70 text-white p-2 rounded-lg hover:bg-black/80 transition-colors"
-    title={walkthroughMode ? 'Exit Walkthrough Mode' : 'Enter Walkthrough Mode'}
-    aria-label={walkthroughMode ? 'Exit Walkthrough Mode' : 'Enter Walkthrough Mode'}
+    <!-- 3D Screenshot Button -->
+    <button
+      onclick={takeScreenshot}
+      class="p-2 rounded-lg bg-black/70 text-white hover:bg-black/80 transition-colors"
+      title="Save 3D Screenshot"
+      aria-label="Save 3D Screenshot"
+    >
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+        <circle cx="12" cy="13" r="4"/>
+      </svg>
+    </button>
+
+    <!-- Walkthrough Mode Toggle Button -->
+    <button
+      onclick={toggleWalkthroughMode}
+      class="p-2 rounded-lg bg-black/70 text-white hover:bg-black/80 transition-colors"
+      title={walkthroughMode ? 'Exit Walkthrough Mode' : 'Enter Walkthrough Mode'}
+      aria-label={walkthroughMode ? 'Exit Walkthrough Mode' : 'Enter Walkthrough Mode'}
   >
     {#if walkthroughMode}
       <!-- Exit/Eye closed icon -->
@@ -1774,7 +1960,61 @@
         <path d="M10 14l2-2 1 2"/>
       </svg>
     {/if}
-  </button>
+    </button>
+  </div><!-- end 3D toolbar row -->
+
+  {#if cameraPlacementMode && !cameraPlaced}
+    <div class="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-black/80 text-white px-4 py-2 rounded-lg text-sm backdrop-blur-sm">
+      📷 Click on the floor to place camera position
+    </div>
+  {:else if cameraPlacementMode && cameraPlaced}
+    <div class="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-black/80 text-white px-4 py-2 rounded-lg text-sm backdrop-blur-sm">
+      🎯 Click where the camera should look
+    </div>
+  {/if}
+
+  <!-- Camera Preview Panel -->
+  {#if cameraPreviewOpen && cameraPlaced}
+    <div class="absolute bottom-4 right-4 z-50 bg-gray-900/95 rounded-xl shadow-2xl backdrop-blur-sm overflow-hidden" style="width: 400px;">
+      <div class="flex items-center justify-between px-3 py-2 border-b border-gray-700">
+        <span class="text-white text-sm font-medium">📷 Interior Camera</span>
+        <button class="text-gray-400 hover:text-white text-lg" onclick={() => { cameraPreviewOpen = false; if (cameraHelper) { wallGroup.remove(cameraHelper); cameraHelper = null; } cameraPlaced = false; }} aria-label="Close camera">✕</button>
+      </div>
+      <canvas bind:this={cameraPreviewCanvas} width="384" height="216" class="w-full"></canvas>
+      <div class="px-3 py-2 space-y-2">
+        <label class="flex items-center justify-between text-xs text-gray-300">
+          <span>FOV (wide angle)</span>
+          <div class="flex items-center gap-2">
+            <input type="range" min="50" max="120" bind:value={cameraFOV} class="w-24 h-1 accent-blue-400"
+              oninput={() => { updateInteriorCamera(); createCameraMarker(new THREE.Vector3(cameraPosition.x, 0, cameraPosition.z), new THREE.Vector3(cameraLookAt.x, 0, cameraLookAt.z)); setTimeout(renderCameraPreview, 50); }} />
+            <span class="w-8 text-right">{cameraFOV}°</span>
+          </div>
+        </label>
+        <label class="flex items-center justify-between text-xs text-gray-300">
+          <span>Height</span>
+          <div class="flex items-center gap-2">
+            <input type="range" min="80" max="220" bind:value={cameraHeight} class="w-24 h-1 accent-blue-400"
+              oninput={() => { updateInteriorCamera(); createCameraMarker(new THREE.Vector3(cameraPosition.x, 0, cameraPosition.z), new THREE.Vector3(cameraLookAt.x, 0, cameraLookAt.z)); setTimeout(renderCameraPreview, 50); }} />
+            <span class="w-12 text-right">{cameraHeight}cm</span>
+          </div>
+        </label>
+        <div class="flex gap-2 pt-1">
+          <button
+            class="flex-1 px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-500 transition-colors"
+            onclick={captureInteriorPhoto}
+          >
+            📸 Capture 1920×1080
+          </button>
+          <button
+            class="px-3 py-1.5 bg-gray-700 text-gray-300 text-sm rounded-lg hover:bg-gray-600 transition-colors"
+            onclick={() => { cameraPlacementMode = true; cameraPlaced = false; }}
+          >
+            Reposition
+          </button>
+        </div>
+      </div>
+    </div>
+  {/if}
 
   {#if walkthroughMode}
     <!-- Crosshair -->
