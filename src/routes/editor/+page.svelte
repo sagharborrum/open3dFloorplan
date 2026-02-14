@@ -13,6 +13,8 @@
   import UndoHistoryPanel from '$lib/components/editor/UndoHistoryPanel.svelte';
   import CommandPalette from '$lib/components/editor/CommandPalette.svelte';
   import PrintLayout from '$lib/components/editor/PrintLayout.svelte';
+  import OnboardingTooltip from '$lib/components/OnboardingTooltip.svelte';
+  import { triggerTip } from '$lib/stores/onboarding';
 
   let commandPaletteOpen = $state(false);
   let printOpen = $state(false);
@@ -36,6 +38,8 @@
       // Clear selection when entering 3D — start in view-only mode
       selectedElementId.set(null);
       selectedRoomId.set(null);
+      // Onboarding tip for first 3D view
+      triggerTip('first-3d', 200, 80);
     }
   });
 
@@ -310,6 +314,7 @@
 
   <CommandPalette bind:open={commandPaletteOpen} />
   <PrintLayout bind:open={printOpen} />
+  <OnboardingTooltip />
 {:else}
   <div class="h-screen flex items-center justify-center">
     <p class="text-gray-400">Loading...</p>

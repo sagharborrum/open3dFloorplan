@@ -164,6 +164,8 @@ export function addWall(start: Point, end: Point): string {
   mutate((f) => {
     f.walls.push({ id, start, end, thickness: 15, height: 280, color: '#444444' });
   }, 'Added wall');
+  // Onboarding tip
+  import('$lib/stores/onboarding').then(m => m.triggerTip('first-wall', end.x > 400 ? 300 : end.x + 20, 120));
   return id;
 }
 
@@ -189,6 +191,8 @@ export function addDoor(wallId: string, position: number, doorType: Door['type']
   mutate((f) => {
     f.doors.push({ id, wallId, position, width, height, type: doorType, swingDirection: 'left', flipSide: false });
   }, `Added ${doorType} door`);
+  // Onboarding tip
+  import('$lib/stores/onboarding').then(m => m.triggerTip('first-door', 300, 120));
   return id;
 }
 
@@ -213,6 +217,8 @@ export function addFurniture(catalogId: string, position: Point): string {
   mutate((f) => {
     f.furniture.push({ id, catalogId, position, rotation: 0, scale: { x: 1, y: 1, z: 1 } });
   }, `Added ${catalogId}`);
+  // Onboarding tip
+  import('$lib/stores/onboarding').then(m => m.triggerTip('first-furniture', position.x + 20, position.y + 20));
   return id;
 }
 

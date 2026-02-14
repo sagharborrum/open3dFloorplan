@@ -129,7 +129,7 @@ Please keep PRs focused and include screenshots for UI changes.
 
 ## 📄 License
 
-This project is open source. See the repository for license details.
+This project is licensed under the [MIT License](LICENSE).
 
 ---
 
