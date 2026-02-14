@@ -1839,14 +1839,7 @@
     {/if}
   {/if}
 
-  {#if materialPickerWall && materialPickerPos && editMode}
-    <MaterialPicker
-      wall={materialPickerWall}
-      screenX={materialPickerPos.x}
-      screenY={materialPickerPos.y}
-      onclose={() => { materialPickerWall = null; materialPickerPos = null; }}
-    />
-  {/if}
+  <!-- MaterialPicker removed — wall materials editable via Properties panel -->
 
   <!-- Lighting Controls Toggle Button -->
   <button
