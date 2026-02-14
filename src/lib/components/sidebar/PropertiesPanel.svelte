@@ -188,7 +188,34 @@
     const newPosition = Math.max(0.05, Math.min(0.95, 1 - (newDistFromB / wallLen)));
     updateWindow(selectedWindow.id, { position: newPosition });
   }
-  function updateDetectedRoom(id: string, updates: Partial<{ name: string; floorTexture: string }>) {
+  // Preset colors for rooms and columns
+  const roomColorPresets = [
+    { name: 'White', color: '#ffffff' },
+    { name: 'Cream', color: '#fffdd0' },
+    { name: 'Beige', color: '#f5f5dc' },
+    { name: 'Light Gray', color: '#d1d5db' },
+    { name: 'Warm Gray', color: '#b8a082' },
+    { name: 'Sage Green', color: '#d4e2d4' },
+    { name: 'Light Blue', color: '#dbeafe' },
+    { name: 'Blush Pink', color: '#f4c2c2' },
+    { name: 'Lavender', color: '#e6e6fa' },
+    { name: 'Butter Yellow', color: '#fff8dc' },
+  ];
+
+  const columnColorPresets = [
+    { name: 'White', color: '#ffffff' },
+    { name: 'Light Gray', color: '#d1d5db' },
+    { name: 'Concrete', color: '#999999' },
+    { name: 'Charcoal', color: '#374151' },
+    { name: 'Black', color: '#000000' },
+    { name: 'Cream', color: '#fffdd0' },
+    { name: 'Wood', color: '#8B6914' },
+    { name: 'Bronze', color: '#cd7f32' },
+    { name: 'Silver', color: '#c0c0c0' },
+    { name: 'Navy', color: '#1e3a8a' },
+  ];
+
+  function updateDetectedRoom(id: string, updates: Partial<{ name: string; floorTexture: string; color: string }>) {
     detectedRoomsStore.update(rooms => rooms.map(r => r.id === id ? { ...r, ...updates } : r));
   }
 
@@ -202,6 +229,11 @@
     if (!selectedRoom) return;
     updateRoom(selectedRoom.id, { floorTexture: texture });
     updateDetectedRoom(selectedRoom.id, { floorTexture: texture });
+  }
+  function onRoomColor(color: string) {
+    if (!selectedRoom) return;
+    updateRoom(selectedRoom.id, { color });
+    updateDetectedRoom(selectedRoom.id, { color });
   }
 
   const roomTypes = [
@@ -624,6 +656,24 @@
         <span class="text-xs text-gray-500">Area</span>
         <p class="text-sm text-gray-700">{formatArea(selectedRoom.area, settings.units)}</p>
       </div>
+      <!-- Room Color -->
+      <div>
+        <span class="text-xs text-gray-500 mb-1.5 block">Room Color</span>
+        <div class="grid grid-cols-5 gap-1.5 mb-2">
+          {#each roomColorPresets as preset}
+            <button
+              class="w-7 h-7 rounded-md border-2 hover:border-gray-300 transition-colors {selectedRoom.color === preset.color ? 'border-blue-500 ring-1 ring-blue-200' : 'border-gray-200'}"
+              style="background-color: {preset.color}"
+              title={preset.name}
+              onclick={() => onRoomColor(preset.color)}
+            ></button>
+          {/each}
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-gray-500">Custom:</span>
+          <input type="color" value={selectedRoom.color ?? '#ffffff'} oninput={(e) => onRoomColor((e.target as HTMLInputElement).value)} class="w-8 h-6 rounded border border-gray-200 cursor-pointer" />
+        </div>
+      </div>
       <div>
         <div class="flex items-center gap-1 mb-2">
           <span class="text-xs text-gray-500">Floor Material</span>
@@ -712,10 +762,23 @@
         <span class="text-xs text-gray-500">Height ({unitLabel()})</span>
         <input type="number" value={displayValue(selectedColumn.height)} min="50" max="1000" oninput={(e) => updateColumn(selectedColumn!.id, { height: inputToCm(Number((e.target as HTMLInputElement).value)) })} class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
       </label>
-      <label class="block">
-        <span class="text-xs text-gray-500">Color</span>
-        <input type="color" value={selectedColumn.color} oninput={(e) => updateColumn(selectedColumn!.id, { color: (e.target as HTMLInputElement).value })} class="w-full h-8 cursor-pointer" />
-      </label>
+      <div>
+        <span class="text-xs text-gray-500 mb-1.5 block">Color</span>
+        <div class="grid grid-cols-5 gap-1.5 mb-2">
+          {#each columnColorPresets as preset}
+            <button
+              class="w-7 h-7 rounded-md border-2 hover:border-gray-300 transition-colors {selectedColumn.color === preset.color ? 'border-blue-500 ring-1 ring-blue-200' : 'border-gray-200'}"
+              style="background-color: {preset.color}"
+              title={preset.name}
+              onclick={() => updateColumn(selectedColumn!.id, { color: preset.color })}
+            ></button>
+          {/each}
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-gray-500">Custom:</span>
+          <input type="color" value={selectedColumn.color} oninput={(e) => updateColumn(selectedColumn!.id, { color: (e.target as HTMLInputElement).value })} class="w-8 h-6 rounded border border-gray-200 cursor-pointer" />
+        </div>
+      </div>
       {#if selectedColumn.shape === 'square'}
         <label class="block">
           <span class="text-xs text-gray-500">Rotation (degrees)</span>

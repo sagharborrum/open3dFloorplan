@@ -71,12 +71,15 @@
   }
 
   function onExport2DPNG() {
+    const p = get(currentProject);
     const canvas = document.querySelector('canvas') as HTMLCanvasElement;
-    if (canvas) exportAsPNG(canvas);
+    if (canvas) exportAsPNG(canvas, p ?? undefined);
     exportOpen = false;
   }
 
   function onExport3DPNG() {
+    const p = get(currentProject);
+    const name = p?.name || 'floorplan';
     // Switch to 3D, wait a tick, then screenshot
     const oldMode = mode;
     viewMode.set('3d');
@@ -87,7 +90,7 @@
           if (blob) {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = url; a.download = 'floorplan-3d.png'; a.click();
+            a.href = url; a.download = `${name}-3d.png`; a.click();
             URL.revokeObjectURL(url);
           }
         });
@@ -167,7 +170,23 @@
           const floor = importRoomPlan(data, { straighten: true, orthogonal: true });
           importFloorIntoCurrentProject(floor);
         } else if (data.floors && data.id) {
-          // Our own project format
+          // Validate project structure
+          if (!Array.isArray(data.floors) || data.floors.length === 0) {
+            alert('Invalid project file: "floors" must be a non-empty array.');
+            return;
+          }
+          for (const fl of data.floors) {
+            if (!fl.id || !Array.isArray(fl.walls)) {
+              alert('Invalid project file: each floor must have an "id" and "walls" array.');
+              return;
+            }
+          }
+          if (!data.activeFloorId || !data.floors.some((f: any) => f.id === data.activeFloorId)) {
+            data.activeFloorId = data.floors[0].id;
+          }
+          // Revive dates
+          if (data.createdAt) data.createdAt = new Date(data.createdAt);
+          if (data.updatedAt) data.updatedAt = new Date(data.updatedAt);
           loadProject(data as Project);
         } else {
           alert('Unrecognized file format. Expected a project file or Apple RoomPlan JSON.');

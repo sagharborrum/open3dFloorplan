@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { activeFloor, selectedTool, selectedElementId, selectedElementIds, selectedRoomId, addWall, addDoor, addWindow, updateWall, moveWallEndpoint, updateDoor, updateWindow, addFurniture, moveFurniture, commitFurnitureMove, rotateFurniture, setFurnitureRotation, scaleFurniture, removeElement, placingFurnitureId, placingRotation, placingDoorType, placingWindowType, detectedRoomsStore, duplicateDoor, duplicateWindow, duplicateFurniture, duplicateWall, moveWallParallel, splitWall, snapEnabled, placingStair, addStair, moveStair, updateStair, placingColumn, placingColumnShape, addColumn, moveColumn, updateColumn, calibrationMode, calibrationPoints, updateBackgroundImage, canvasZoom, canvasCamX, canvasCamY, panMode, showFurnitureStore, addGuide, moveGuide, removeGuide, beginUndoGroup, endUndoGroup, layerVisibility } from '$lib/stores/project';
+  import { activeFloor, selectedTool, selectedElementId, selectedElementIds, selectedRoomId, addWall, addDoor, addWindow, updateWall, moveWallEndpoint, updateDoor, updateWindow, addFurniture, moveFurniture, commitFurnitureMove, rotateFurniture, setFurnitureRotation, scaleFurniture, removeElement, placingFurnitureId, placingRotation, placingDoorType, placingWindowType, detectedRoomsStore, duplicateDoor, duplicateWindow, duplicateFurniture, duplicateWall, moveWallParallel, splitWall, snapEnabled, placingStair, addStair, moveStair, updateStair, placingColumn, placingColumnShape, addColumn, moveColumn, updateColumn, calibrationMode, calibrationPoints, updateBackgroundImage, canvasZoom, canvasCamX, canvasCamY, panMode, showFurnitureStore, addGuide, moveGuide, removeGuide, beginUndoGroup, endUndoGroup, layerVisibility, updateRoom } from '$lib/stores/project';
   import type { Point, Wall, Door, Window as Win, FurnitureItem, Stair, Column, GuideLine } from '$lib/models/types';
   import type { Floor, Room } from '$lib/models/types';
   import { detectRooms, getRoomPolygon, roomCentroid } from '$lib/utils/roomDetection';
@@ -32,6 +32,11 @@
   let wallStart: Point | null = $state(null);
   let wallSequenceFirst: Point | null = $state(null);
   let mousePos: Point = $state({ x: 0, y: 0 });
+
+  // Inline room name editing
+  let editingRoomId: string | null = $state(null);
+  let editingRoomPos: { x: number; y: number } = $state({ x: 0, y: 0 });
+  let editingRoomName: string = $state('');
 
   // Pan state
   let isPanning = $state(false);
@@ -1448,6 +1453,14 @@
   ];
 
   function getRoomFill(room: Room, index: number): string {
+    if (room.color) {
+      // Convert hex color to rgba with low opacity for room fill
+      const hex = room.color.replace('#', '');
+      const r = parseInt(hex.substring(0, 2), 16);
+      const g = parseInt(hex.substring(2, 4), 16);
+      const b = parseInt(hex.substring(4, 6), 16);
+      return `rgba(${r}, ${g}, ${b}, 0.12)`;
+    }
     return ROOM_FILLS_BY_TYPE[room.name] ?? ROOM_FILLS_DEFAULT[index % ROOM_FILLS_DEFAULT.length];
   }
 
@@ -3147,6 +3160,22 @@
       return;
     }
 
+    // Double-click on a room to edit its name inline
+    if (currentTool === 'select') {
+      const wp = screenToWorld(sx, sy);
+      const room = findRoomAt(wp);
+      if (room) {
+        const poly = getRoomPolygon(room, currentFloor!.walls);
+        const centroid = roomCentroid(poly);
+        const sc = worldToScreen(centroid.x, centroid.y);
+        editingRoomId = room.id;
+        editingRoomName = room.name;
+        editingRoomPos = { x: sc.x, y: sc.y };
+        selectedRoomId.set(room.id);
+        return;
+      }
+    }
+
     // Double-click on a wall in select mode to split it
     if (currentTool === 'select') {
       const wp = screenToWorld(sx, sy);
@@ -3796,6 +3825,33 @@
     ondragleave={onDragLeave}
     ondrop={onDrop}
   ></canvas>
+  <!-- Inline room name editor -->
+  {#if editingRoomId}
+    <input
+      type="text"
+      class="absolute bg-white border-2 border-blue-500 rounded px-2 py-1 text-sm text-center shadow-lg outline-none"
+      style="left: {editingRoomPos.x}px; top: {editingRoomPos.y}px; transform: translate(-50%, -50%); z-index: 20; min-width: 100px;"
+      value={editingRoomName}
+      oninput={(e) => { editingRoomName = (e.target as HTMLInputElement).value; }}
+      onkeydown={(e) => {
+        if (e.key === 'Enter') {
+          updateRoom(editingRoomId!, { name: editingRoomName });
+          detectedRoomsStore.update(rooms => rooms.map(r => r.id === editingRoomId ? { ...r, name: editingRoomName } : r));
+          editingRoomId = null;
+        } else if (e.key === 'Escape') {
+          editingRoomId = null;
+        }
+      }}
+      onblur={() => {
+        if (editingRoomId) {
+          updateRoom(editingRoomId, { name: editingRoomName });
+          detectedRoomsStore.update(rooms => rooms.map(r => r.id === editingRoomId ? { ...r, name: editingRoomName } : r));
+          editingRoomId = null;
+        }
+      }}
+      autofocus
+    />
+  {/if}
   <!-- Empty state hint -->
   {#if currentFloor && currentFloor.walls.length === 0 && currentFloor.furniture.length === 0 && currentFloor.doors.length === 0}
     <div class="absolute inset-0 flex items-center justify-center pointer-events-none">

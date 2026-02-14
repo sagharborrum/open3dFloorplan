@@ -384,7 +384,7 @@ export function updateFurniture(id: string, updates: Partial<FurnitureItem>) {
   });
 }
 
-export function updateRoom(id: string, updates: Partial<{ name: string; floorTexture: string }>) {
+export function updateRoom(id: string, updates: Partial<{ name: string; floorTexture: string; color: string }>) {
   mutate((f) => {
     let r = f.rooms.find((r) => r.id === id);
     if (r) {

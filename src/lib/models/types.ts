@@ -24,6 +24,7 @@ export interface Room {
   walls: string[];
   floorTexture: string;
   area: number;
+  color?: string;
 }
 
 export interface Door {
