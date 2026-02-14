@@ -81,6 +81,12 @@ export interface Column {
   color: string;
 }
 
+export interface GuideLine {
+  id: string;
+  orientation: 'horizontal' | 'vertical';
+  position: number; // world coordinate (x for vertical, y for horizontal)
+}
+
 export interface BackgroundImage {
   dataUrl: string;
   position: Point;
@@ -102,6 +108,7 @@ export interface Floor {
   stairs: Stair[];
   columns: Column[];
   backgroundImage?: BackgroundImage;
+  guides: GuideLine[];
 }
 
 export interface Project {

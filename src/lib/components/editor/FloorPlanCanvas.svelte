@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { activeFloor, selectedTool, selectedElementId, selectedElementIds, selectedRoomId, addWall, addDoor, addWindow, updateWall, moveWallEndpoint, updateDoor, updateWindow, addFurniture, moveFurniture, commitFurnitureMove, rotateFurniture, setFurnitureRotation, scaleFurniture, removeElement, placingFurnitureId, placingRotation, placingDoorType, placingWindowType, detectedRoomsStore, duplicateDoor, duplicateWindow, duplicateFurniture, duplicateWall, moveWallParallel, splitWall, snapEnabled, placingStair, addStair, moveStair, updateStair, placingColumn, placingColumnShape, addColumn, moveColumn, updateColumn, calibrationMode, calibrationPoints, updateBackgroundImage, canvasZoom, canvasCamX, canvasCamY, panMode, showFurnitureStore } from '$lib/stores/project';
-  import type { Point, Wall, Door, Window as Win, FurnitureItem, Stair, Column } from '$lib/models/types';
+  import { activeFloor, selectedTool, selectedElementId, selectedElementIds, selectedRoomId, addWall, addDoor, addWindow, updateWall, moveWallEndpoint, updateDoor, updateWindow, addFurniture, moveFurniture, commitFurnitureMove, rotateFurniture, setFurnitureRotation, scaleFurniture, removeElement, placingFurnitureId, placingRotation, placingDoorType, placingWindowType, detectedRoomsStore, duplicateDoor, duplicateWindow, duplicateFurniture, duplicateWall, moveWallParallel, splitWall, snapEnabled, placingStair, addStair, moveStair, updateStair, placingColumn, placingColumnShape, addColumn, moveColumn, updateColumn, calibrationMode, calibrationPoints, updateBackgroundImage, canvasZoom, canvasCamX, canvasCamY, panMode, showFurnitureStore, addGuide, moveGuide, removeGuide } from '$lib/stores/project';
+  import type { Point, Wall, Door, Window as Win, FurnitureItem, Stair, Column, GuideLine } from '$lib/models/types';
   import type { Floor, Room } from '$lib/models/types';
   import { detectRooms, getRoomPolygon, roomCentroid } from '$lib/utils/roomDetection';
   import { getMaterial } from '$lib/utils/materials';
@@ -46,6 +46,10 @@
   let draggingDoorId: string | null = $state(null);
   let draggingWindowId: string | null = $state(null);
 
+  // Guide lines
+  let selectedGuideId: string | null = $state(null);
+  let draggingGuideId: string | null = $state(null);
+
   // Measurement tool
   let measureStart: Point | null = $state(null);
   let measureEnd: Point | null = $state(null);
@@ -74,6 +78,8 @@
   });
   let showStairs = $state(true);
   let showLayerPanel = $state(false);
+  let showMinimap = $state(true);
+  let minimapCanvas: HTMLCanvasElement;
   const RULER_SIZE = 24;
 
   // Detected rooms
@@ -1643,6 +1649,51 @@
     detectedRoomsStore.set(newRooms);
   }
 
+  function drawGuides() {
+    if (!ctx || !currentFloor) return;
+    const guides = currentFloor.guides ?? [];
+    const R = RULER_SIZE;
+    for (const g of guides) {
+      const selected = g.id === selectedGuideId;
+      const color = g.orientation === 'horizontal' ? '#00bcd4' : '#e040fb'; // cyan / magenta
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = selected ? 1.5 : 1;
+      ctx.setLineDash([6, 4]);
+      ctx.globalAlpha = selected ? 1.0 : 0.7;
+      ctx.beginPath();
+      if (g.orientation === 'horizontal') {
+        const sy = worldToScreen(0, g.position).y;
+        ctx.moveTo(R, sy);
+        ctx.lineTo(width, sy);
+      } else {
+        const sx = worldToScreen(g.position, 0).x;
+        ctx.moveTo(sx, R);
+        ctx.lineTo(sx, height);
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Label
+      ctx.font = '10px sans-serif';
+      ctx.fillStyle = color;
+      ctx.globalAlpha = 1;
+      const label = formatLength(g.position);
+      if (g.orientation === 'horizontal') {
+        const sy = worldToScreen(0, g.position).y;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(label, R + 4, sy - 2);
+      } else {
+        const sx = worldToScreen(g.position, 0).x;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillText(label, sx + 4, R + 2);
+      }
+      ctx.restore();
+    }
+  }
+
   function drawRulers() {
     if (!ctx || !showRulers) return;
     const R = RULER_SIZE;
@@ -1916,6 +1967,7 @@
     ctx.fillStyle = '#f8f9fa';
     ctx.fillRect(0, 0, width, height);
     drawGrid();
+    drawGuides();
     drawBackgroundImage();
 
     const floor = currentFloor;
@@ -2311,6 +2363,9 @@
     // Rulers (drawn last, on top of everything)
     drawRulers();
 
+    // Mini-map
+    drawMinimap();
+
     requestAnimationFrame(draw);
   }
 
@@ -2353,26 +2408,168 @@
     return () => { resizeObs.disconnect(); unsub1(); unsub2(); unsub3(); unsub4(); unsub5(); unsub6(); unsub7(); unsub8(); unsub9(); unsub10(); unsub11(); unsub12(); unsub13(); unsub_multi(); unsub14(); unsub_col(); unsub_cols(); unsub_snapgrid(); };
   });
 
+  /** Compute world bounding box of all elements */
+  function getWorldBBox(): { minX: number; minY: number; maxX: number; maxY: number } | null {
+    if (!currentFloor) return null;
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    let found = false;
+    function expand(x: number, y: number) { if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y; found = true; }
+    for (const w of currentFloor.walls) { expand(w.start.x, w.start.y); expand(w.end.x, w.end.y); if (w.curvePoint) expand(w.curvePoint.x, w.curvePoint.y); }
+    for (const fi of currentFloor.furniture) { const cat = getCatalogItem(fi.catalogId); if (!cat) continue; const r = Math.hypot((fi.width ?? cat.width) / 2, (fi.depth ?? cat.depth) / 2); expand(fi.position.x - r, fi.position.y - r); expand(fi.position.x + r, fi.position.y + r); }
+    if (currentFloor.stairs) for (const st of currentFloor.stairs) { expand(st.position.x - st.width / 2, st.position.y - st.depth / 2); expand(st.position.x + st.width / 2, st.position.y + st.depth / 2); }
+    if (currentFloor.columns) for (const col of currentFloor.columns) { const r = col.diameter / 2; expand(col.position.x - r, col.position.y - r); expand(col.position.x + r, col.position.y + r); }
+    if (!found) return null;
+    const pad = 50;
+    return { minX: minX - pad, minY: minY - pad, maxX: maxX + pad, maxY: maxY + pad };
+  }
+
+  function drawMinimap() {
+    if (!showMinimap || !minimapCanvas || !currentFloor) return;
+    const mctx = minimapCanvas.getContext('2d');
+    if (!mctx) return;
+    const mw = minimapCanvas.width;
+    const mh = minimapCanvas.height;
+    mctx.clearRect(0, 0, mw, mh);
+
+    const bbox = getWorldBBox();
+    if (!bbox) return;
+
+    // Background
+    mctx.fillStyle = '#f0f1f3';
+    mctx.fillRect(0, 0, mw, mh);
+
+    const bw = bbox.maxX - bbox.minX;
+    const bh = bbox.maxY - bbox.minY;
+    if (bw < 1 || bh < 1) return;
+    const scale = Math.min((mw - 8) / bw, (mh - 8) / bh);
+    const ox = (mw - bw * scale) / 2;
+    const oy = (mh - bh * scale) / 2;
+
+    function toMini(wx: number, wy: number) {
+      return { x: ox + (wx - bbox!.minX) * scale, y: oy + (wy - bbox!.minY) * scale };
+    }
+
+    // Draw walls as thin lines
+    mctx.strokeStyle = '#555';
+    mctx.lineWidth = Math.max(1, 2 * scale);
+    for (const w of currentFloor!.walls) {
+      const s = toMini(w.start.x, w.start.y);
+      const e = toMini(w.end.x, w.end.y);
+      mctx.beginPath();
+      if (w.curvePoint) {
+        const cp = toMini(w.curvePoint.x, w.curvePoint.y);
+        mctx.moveTo(s.x, s.y);
+        mctx.quadraticCurveTo(cp.x, cp.y, e.x, e.y);
+      } else {
+        mctx.moveTo(s.x, s.y);
+        mctx.lineTo(e.x, e.y);
+      }
+      mctx.stroke();
+    }
+
+    // Draw furniture as small colored rectangles
+    for (const fi of currentFloor!.furniture) {
+      const cat = getCatalogItem(fi.catalogId);
+      if (!cat) continue;
+      const p = toMini(fi.position.x, fi.position.y);
+      const fw = Math.max(2, (fi.width ?? cat.width) * scale);
+      const fd = Math.max(2, (fi.depth ?? cat.depth) * scale);
+      mctx.fillStyle = (fi.color ?? cat.color) + 'aa';
+      mctx.fillRect(p.x - fw / 2, p.y - fd / 2, fw, fd);
+    }
+
+    // Draw viewport rectangle
+    const vpTopLeft = screenToWorld(0, 0);
+    const vpBottomRight = screenToWorld(width, height);
+    const vtl = toMini(vpTopLeft.x, vpTopLeft.y);
+    const vbr = toMini(vpBottomRight.x, vpBottomRight.y);
+    mctx.strokeStyle = '#3b82f6';
+    mctx.lineWidth = 1.5;
+    mctx.fillStyle = 'rgba(59, 130, 246, 0.1)';
+    const vw = vbr.x - vtl.x;
+    const vh = vbr.y - vtl.y;
+    mctx.fillRect(vtl.x, vtl.y, vw, vh);
+    mctx.strokeRect(vtl.x, vtl.y, vw, vh);
+
+    // Border
+    mctx.strokeStyle = '#cbd5e1';
+    mctx.lineWidth = 1;
+    mctx.strokeRect(0, 0, mw, mh);
+  }
+
+  function onMinimapClick(e: MouseEvent) {
+    if (!minimapCanvas || !currentFloor) return;
+    const rect = minimapCanvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const mw = minimapCanvas.width;
+    const mh = minimapCanvas.height;
+
+    const bbox = getWorldBBox();
+    if (!bbox) return;
+    const bw = bbox.maxX - bbox.minX;
+    const bh = bbox.maxY - bbox.minY;
+    if (bw < 1 || bh < 1) return;
+    const scale = Math.min((mw - 8) / bw, (mh - 8) / bh);
+    const ox = (mw - bw * scale) / 2;
+    const oy = (mh - bh * scale) / 2;
+
+    // Convert mini-map coords to world coords
+    camX = bbox.minX + (mx - ox) / scale;
+    camY = bbox.minY + (my - oy) / scale;
+  }
+
   function zoomToFit() {
-    if (!currentFloor || currentFloor.walls.length === 0) {
+    if (!currentFloor || (currentFloor.walls.length === 0 && currentFloor.furniture.length === 0)) {
       camX = 0; camY = 0; zoom = 1;
       return;
     }
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    for (const w of currentFloor.walls) {
-      for (const p of [w.start, w.end]) {
-        minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
-        minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
-      }
+    function expand(x: number, y: number) {
+      if (x < minX) minX = x; if (x > maxX) maxX = x;
+      if (y < minY) minY = y; if (y > maxY) maxY = y;
     }
+    // Walls (including curve control points)
+    for (const w of currentFloor.walls) {
+      expand(w.start.x, w.start.y);
+      expand(w.end.x, w.end.y);
+      if (w.curvePoint) expand(w.curvePoint.x, w.curvePoint.y);
+    }
+    // Furniture
     for (const fi of currentFloor.furniture) {
       const cat = getCatalogItem(fi.catalogId);
       if (!cat) continue;
-      minX = Math.min(minX, fi.position.x - cat.width / 2);
-      maxX = Math.max(maxX, fi.position.x + cat.width / 2);
-      minY = Math.min(minY, fi.position.y - cat.depth / 2);
-      maxY = Math.max(maxY, fi.position.y + cat.depth / 2);
+      const hw = (fi.width ?? cat.width) / 2;
+      const hd = (fi.depth ?? cat.depth) / 2;
+      const r = Math.hypot(hw, hd); // conservative radius for rotated items
+      expand(fi.position.x - r, fi.position.y - r);
+      expand(fi.position.x + r, fi.position.y + r);
     }
+    // Doors & windows (position on their parent wall)
+    for (const d of currentFloor.doors) {
+      const w = currentFloor.walls.find(wl => wl.id === d.wallId);
+      if (w) { const pt = wallPointAt(w, d.position); expand(pt.x, pt.y); }
+    }
+    for (const win of currentFloor.windows) {
+      const w = currentFloor.walls.find(wl => wl.id === win.wallId);
+      if (w) { const pt = wallPointAt(w, win.position); expand(pt.x, pt.y); }
+    }
+    // Stairs
+    if (currentFloor.stairs) {
+      for (const st of currentFloor.stairs) {
+        expand(st.position.x - st.width / 2, st.position.y - st.depth / 2);
+        expand(st.position.x + st.width / 2, st.position.y + st.depth / 2);
+      }
+    }
+    // Columns
+    if (currentFloor.columns) {
+      for (const col of currentFloor.columns) {
+        const r = col.diameter / 2;
+        expand(col.position.x - r, col.position.y - r);
+        expand(col.position.x + r, col.position.y + r);
+      }
+    }
+    if (minX === Infinity) { camX = 0; camY = 0; zoom = 1; return; }
     const padding = 80;
     const contentW = maxX - minX + padding * 2;
     const contentH = maxY - minY + padding * 2;
@@ -2555,6 +2752,27 @@
     const rect = canvas.getBoundingClientRect();
     const wp = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
     const tool = currentTool;
+
+    // Guide line click detection (select / start drag)
+    if (tool === 'select' && currentFloor?.guides) {
+      const GUIDE_HIT = 6 / zoom; // 6px tolerance in world units
+      for (const g of currentFloor.guides) {
+        if (g.orientation === 'horizontal' && Math.abs(wp.y - g.position) < GUIDE_HIT) {
+          selectedGuideId = g.id;
+          draggingGuideId = g.id;
+          selectedElementId.set(null);
+          return;
+        }
+        if (g.orientation === 'vertical' && Math.abs(wp.x - g.position) < GUIDE_HIT) {
+          selectedGuideId = g.id;
+          draggingGuideId = g.id;
+          selectedElementId.set(null);
+          return;
+        }
+      }
+      // Click elsewhere deselects guide
+      selectedGuideId = null;
+    }
 
     // Calibration mode click
     if (isCalibrating) {
@@ -2808,10 +3026,27 @@
   }
 
   function onDblClick(e: MouseEvent) {
+    const rect = canvas.getBoundingClientRect();
+    const sx = e.clientX - rect.left;
+    const sy = e.clientY - rect.top;
+    const R = RULER_SIZE;
+
+    // Double-click on horizontal ruler → add horizontal guide
+    if (sy < R && sx > R) {
+      const wp = screenToWorld(sx, sy);
+      addGuide('horizontal', wp.y);
+      return;
+    }
+    // Double-click on vertical ruler → add vertical guide
+    if (sx < R && sy > R) {
+      const wp = screenToWorld(sx, sy);
+      addGuide('vertical', wp.x);
+      return;
+    }
+
     // Double-click on a wall in select mode to split it
     if (currentTool === 'select') {
-      const rect = canvas.getBoundingClientRect();
-      const wp = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
+      const wp = screenToWorld(sx, sy);
       const wall = findWallAt(wp);
       if (wall && !wall.curvePoint) {
         const t = positionOnWall(wp, wall);
@@ -2837,6 +3072,16 @@
   function onMouseMove(e: MouseEvent) {
     const rect = canvas.getBoundingClientRect();
     mousePos = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
+
+    // Drag guide line
+    if (draggingGuideId && currentFloor?.guides) {
+      const g = currentFloor.guides.find(g => g.id === draggingGuideId);
+      if (g) {
+        const newPos = g.orientation === 'horizontal' ? mousePos.y : mousePos.x;
+        moveGuide(draggingGuideId, snap(newPos));
+      }
+      return;
+    }
     if (isPanning) {
       camX -= (e.clientX - panStartX) / zoom;
       camY -= (e.clientY - panStartY) / zoom;
@@ -2985,6 +3230,18 @@
           wallSnapInfo = { wallId: wallSnap.wallId, side: wallSnap.side, wallAngle: wallSnap.wallAngle };
         } else {
           const snapped = { x: snap(basePos.x), y: snap(basePos.y) };
+          // Snap to guide lines
+          const GUIDE_SNAP = 10; // world units
+          if (currentFloor?.guides) {
+            for (const g of currentFloor.guides) {
+              if (g.orientation === 'horizontal' && Math.abs(snapped.y - g.position) < GUIDE_SNAP) {
+                snapped.y = g.position;
+              }
+              if (g.orientation === 'vertical' && Math.abs(snapped.x - g.position) < GUIDE_SNAP) {
+                snapped.x = g.position;
+              }
+            }
+          }
           moveFurniture(draggingFurnitureId, snapped);
           wallSnapInfo = null;
         }
@@ -3034,6 +3291,7 @@
 
   function onMouseUp(e: MouseEvent) {
     isPanning = false;
+    draggingGuideId = null;
 
     // Finalize marquee selection
     if (marqueeStart && marqueeEnd && currentFloor) {
@@ -3144,6 +3402,14 @@
   function onKeyDown(e: KeyboardEvent) {
     shiftDown = e.shiftKey;
     if (e.code === 'Space') { spaceDown = true; e.preventDefault(); return; }
+
+    // Delete selected guide line
+    if ((e.key === 'Delete' || e.key === 'Backspace') && selectedGuideId) {
+      removeGuide(selectedGuideId);
+      selectedGuideId = null;
+      e.preventDefault();
+      return;
+    }
 
     // Canvas-specific Escape handling (before global shortcut eats it)
     if (e.code === 'Escape') {
@@ -3433,6 +3699,17 @@
       </div>
     </div>
   {/if}
+  <!-- Mini-map -->
+  {#if showMinimap && currentFloor && currentFloor.walls.length > 0}
+    <canvas
+      bind:this={minimapCanvas}
+      width="180"
+      height="120"
+      class="absolute bottom-10 right-2 rounded-lg shadow-lg border border-gray-300 cursor-crosshair bg-white"
+      style="z-index: 15;"
+      onclick={onMinimapClick}
+    ></canvas>
+  {/if}
   <div class="absolute bottom-2 right-2 bg-white/80 rounded px-2 py-1 text-xs text-gray-500 flex gap-3">
     {#if detectedRooms.length > 0}
       <span>{detectedRooms.length} room{detectedRooms.length !== 1 ? 's' : ''}</span>
@@ -3472,6 +3749,9 @@
     </button>
     <button class="hover:text-gray-700" onclick={() => showRulers = !showRulers} title="Toggle Rulers">
       {showRulers ? '📏' : '📐'} Rulers
+    </button>
+    <button class="hover:text-gray-700" onclick={() => showMinimap = !showMinimap} title="Toggle Mini-map">
+      {showMinimap ? '🗺' : '🗺'} Map
     </button>
   </div>
   <!-- Layer Visibility Panel -->

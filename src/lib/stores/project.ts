@@ -1,5 +1,5 @@
 import { writable, derived, get } from 'svelte/store';
-import type { Project, Floor, Wall, Door, Window as Win, FurnitureItem, Point, Stair, Column, BackgroundImage } from '$lib/models/types';
+import type { Project, Floor, Wall, Door, Window as Win, FurnitureItem, Point, Stair, Column, BackgroundImage, GuideLine } from '$lib/models/types';
 
 
 function uid(): string {
@@ -8,7 +8,7 @@ function uid(): string {
 
 export function createDefaultFloor(level = 0): Floor {
   const id = uid();
-  return { id, name: level === 0 ? 'Ground Floor' : `Floor ${level}`, level, walls: [], rooms: [], doors: [], windows: [], furniture: [], stairs: [], columns: [] };
+  return { id, name: level === 0 ? 'Ground Floor' : `Floor ${level}`, level, walls: [], rooms: [], doors: [], windows: [], furniture: [], stairs: [], columns: [], guides: [] };
 }
 
 export function createDefaultProject(name = 'Untitled Project'): Project {
@@ -579,6 +579,31 @@ export function duplicateWall(id: string): string | null {
     f.walls.push({ ...w, id: newId, start: { x: w.start.x + 30, y: w.start.y + 30 }, end: { x: w.end.x + 30, y: w.end.y + 30 } });
   });
   return newId;
+}
+
+// --- Guide Lines ---
+export function addGuide(orientation: 'horizontal' | 'vertical', position: number): string {
+  const id = uid();
+  mutate(f => {
+    if (!f.guides) f.guides = [];
+    f.guides.push({ id, orientation, position });
+  });
+  return id;
+}
+
+export function moveGuide(id: string, position: number) {
+  mutate(f => {
+    if (!f.guides) return;
+    const g = f.guides.find(g => g.id === id);
+    if (g) g.position = position;
+  });
+}
+
+export function removeGuide(id: string) {
+  mutate(f => {
+    if (!f.guides) return;
+    f.guides = f.guides.filter(g => g.id !== id);
+  });
 }
 
 // Zoom store for 2D canvas — shared between FloorPlanCanvas and TopBar
