@@ -13,11 +13,89 @@ interface Edge {
 }
 
 /**
+ * Find points where one wall's endpoint lands on another wall's interior (T-junctions).
+ * Split such walls into sub-segments so the graph correctly represents all connections.
+ */
+function splitWallsAtTJunctions(walls: Wall[]): Edge[] {
+  // Collect all endpoints
+  const endpoints: Point[] = [];
+  for (const w of walls) {
+    endpoints.push(w.start, w.end);
+  }
+
+  // For each wall, find any endpoints (from other walls) that lie on its interior
+  interface SplitWall {
+    wallId: string;
+    start: Point;
+    end: Point;
+    splitPoints: { point: Point; t: number }[];
+  }
+
+  const splitWalls: SplitWall[] = walls.map(w => ({
+    wallId: w.id,
+    start: w.start,
+    end: w.end,
+    splitPoints: [],
+  }));
+
+  for (let wi = 0; wi < walls.length; wi++) {
+    const w = walls[wi];
+    const dx = w.end.x - w.start.x;
+    const dy = w.end.y - w.start.y;
+    const lenSq = dx * dx + dy * dy;
+    if (lenSq < EPSILON * EPSILON) continue;
+
+    for (const ep of endpoints) {
+      // Skip if this endpoint is one of the wall's own endpoints
+      if (ptEq(ep, w.start) || ptEq(ep, w.end)) continue;
+
+      // Project ep onto the wall segment
+      const t = ((ep.x - w.start.x) * dx + (ep.y - w.start.y) * dy) / lenSq;
+      if (t <= EPSILON / Math.sqrt(lenSq) || t >= 1 - EPSILON / Math.sqrt(lenSq)) continue;
+
+      // Check distance from ep to the projected point
+      const projX = w.start.x + t * dx;
+      const projY = w.start.y + t * dy;
+      const dist = Math.sqrt((ep.x - projX) ** 2 + (ep.y - projY) ** 2);
+      if (dist < EPSILON) {
+        // Check we haven't already added a point at this location
+        const already = splitWalls[wi].splitPoints.some(sp => ptEq(sp.point, ep));
+        if (!already) {
+          splitWalls[wi].splitPoints.push({ point: { x: ep.x, y: ep.y }, t });
+        }
+      }
+    }
+  }
+
+  // Build edges: for walls with split points, create sub-segments
+  const edges: Edge[] = [];
+  for (const sw of splitWalls) {
+    if (sw.splitPoints.length === 0) {
+      edges.push({ wallId: sw.wallId, start: sw.start, end: sw.end });
+    } else {
+      // Sort split points by t
+      sw.splitPoints.sort((a, b) => a.t - b.t);
+      let prev = sw.start;
+      for (const sp of sw.splitPoints) {
+        edges.push({ wallId: sw.wallId, start: prev, end: sp.point });
+        prev = sp.point;
+      }
+      edges.push({ wallId: sw.wallId, start: prev, end: sw.end });
+    }
+  }
+
+  return edges;
+}
+
+/**
  * Detect enclosed rooms from a set of walls using a simple graph-cycle approach.
  * Returns detected rooms with wall ids, centroid, and area.
  */
 export function detectRooms(walls: Wall[]): Room[] {
   if (walls.length < 3) return [];
+
+  // Split walls at T-junctions so shared-wall rooms are properly separated
+  const splitEdges = splitWallsAtTJunctions(walls);
 
   // Build adjacency: collect unique vertices & edges
   const vertices: Point[] = [];
@@ -31,11 +109,11 @@ export function detectRooms(walls: Wall[]): Room[] {
     return vertices.length - 1;
   }
 
-  for (const w of walls) {
-    const si = findOrAddVertex(w.start);
-    const ei = findOrAddVertex(w.end);
+  for (const e of splitEdges) {
+    const si = findOrAddVertex(e.start);
+    const ei = findOrAddVertex(e.end);
     if (si !== ei) {
-      edges.push({ wallId: w.id, start: vertices[si], end: vertices[ei] });
+      edges.push({ wallId: e.wallId, start: vertices[si], end: vertices[ei] });
     }
   }
 
@@ -89,17 +167,20 @@ export function detectRooms(walls: Wall[]): Room[] {
 
         if (next === from && cycle.length > 3) break; // closed
 
-        // Find next: leftmost turn
+        // Find next: leftmost turn (smallest CCW angle from incoming direction)
         const inAngle = Math.atan2(vertices[cur].y - vertices[next].y, vertices[cur].x - vertices[next].x);
         const neighbors2 = adj.get(next);
-        if (!neighbors2 || neighbors2.length < 2) { valid = false; break; }
+        if (!neighbors2 || neighbors2.length === 0) { valid = false; break; }
 
-        // Find the edge just after inAngle (next CCW)
+        // Find the edge with smallest positive angular difference from inAngle
+        // This gives us the "next edge clockwise" which traces minimal faces
         let bestIdx = -1;
         let bestDelta = Infinity;
         for (let i = 0; i < neighbors2.length; i++) {
-          if (neighbors2[i].to === cur && neighbors2.length > 1) continue; // skip going back if possible
-          let delta = neighbors2[i].angle - inAngle;
+          const n = neighbors2[i];
+          // Skip going back along the same edge only if other options exist
+          if (n.to === cur && neighbors2.length > 1) continue;
+          let delta = n.angle - inAngle;
           if (delta <= 1e-9) delta += Math.PI * 2;
           if (delta < bestDelta) {
             bestDelta = delta;

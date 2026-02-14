@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { activeFloor, selectedTool, selectedElementId, selectedElementIds, selectedRoomId, addWall, addDoor, addWindow, updateWall, moveWallEndpoint, updateDoor, updateWindow, addFurniture, moveFurniture, commitFurnitureMove, rotateFurniture, setFurnitureRotation, scaleFurniture, removeElement, placingFurnitureId, placingRotation, placingDoorType, placingWindowType, detectedRoomsStore, duplicateDoor, duplicateWindow, duplicateFurniture, duplicateWall, moveWallParallel, splitWall, snapEnabled, placingStair, addStair, moveStair, updateStair, placingColumn, placingColumnShape, addColumn, moveColumn, updateColumn, calibrationMode, calibrationPoints, updateBackgroundImage, canvasZoom, canvasCamX, canvasCamY, panMode, showFurnitureStore, addGuide, moveGuide, removeGuide, beginUndoGroup, endUndoGroup, layerVisibility, updateRoom, addMeasurement, removeMeasurement, addAnnotation, removeAnnotation, updateAnnotation, addTextAnnotation, removeTextAnnotation, updateTextAnnotation, moveTextAnnotation, toggleFurnitureLock, createGroup, ungroupElements, findGroupForElement } from '$lib/stores/project';
+  import { activeFloor, selectedTool, selectedElementId, selectedElementIds, selectedRoomId, addWall, addDoor, addWindow, updateWall, moveWallEndpoint, updateDoor, updateWindow, addFurniture, moveFurniture, commitFurnitureMove, rotateFurniture, setFurnitureRotation, scaleFurniture, removeElement, placingFurnitureId, placingRotation, placingDoorType, placingWindowType, detectedRoomsStore, duplicateDoor, duplicateWindow, duplicateFurniture, duplicateWall, moveWallParallel, splitWall, snapEnabled, placingStair, addStair, moveStair, updateStair, placingColumn, placingColumnShape, addColumn, moveColumn, updateColumn, calibrationMode, calibrationPoints, updateBackgroundImage, setBackgroundImage, canvasZoom, canvasCamX, canvasCamY, panMode, showFurnitureStore, addGuide, moveGuide, removeGuide, beginUndoGroup, endUndoGroup, layerVisibility, updateRoom, addMeasurement, removeMeasurement, addAnnotation, removeAnnotation, updateAnnotation, addTextAnnotation, removeTextAnnotation, updateTextAnnotation, moveTextAnnotation, toggleFurnitureLock, createGroup, ungroupElements, findGroupForElement } from '$lib/stores/project';
   import type { Point, Wall, Door, Window as Win, FurnitureItem, Stair, Column, GuideLine, Measurement, Annotation, TextAnnotation } from '$lib/models/types';
   import type { Floor, Room } from '$lib/models/types';
   import { detectRooms, getRoomPolygon, roomCentroid } from '$lib/utils/roomDetection';
@@ -1690,7 +1690,33 @@
       }
     });
 
-    return () => { resizeObs.disconnect(); unsub1(); unsub2(); unsub3(); unsub4(); unsub5(); unsub6(); unsub7(); unsub8(); unsub9(); unsub10(); unsub11(); unsub12(); unsub13(); unsub_multi(); unsub14(); unsub_col(); unsub_cols(); unsub_snapgrid(); };
+    // Clipboard image paste handler — only if no internal furniture clipboard
+    function handlePaste(e: ClipboardEvent) {
+      if (!e.clipboardData) return;
+      if (clipboard && clipboard.items.length > 0) return; // internal clipboard takes priority
+      const files = e.clipboardData.files;
+      for (let i = 0; i < files.length; i++) {
+        if (files[i].type.startsWith('image/')) {
+          e.preventDefault();
+          const reader = new FileReader();
+          reader.onload = () => {
+            setBackgroundImage({
+              dataUrl: reader.result as string,
+              position: { x: camX, y: camY },
+              scale: 1,
+              opacity: 0.5,
+              rotation: 0,
+              locked: false
+            });
+          };
+          reader.readAsDataURL(files[i]);
+          return;
+        }
+      }
+    }
+    document.addEventListener('paste', handlePaste);
+
+    return () => { resizeObs.disconnect(); unsub1(); unsub2(); unsub3(); unsub4(); unsub5(); unsub6(); unsub7(); unsub8(); unsub9(); unsub10(); unsub11(); unsub12(); unsub13(); unsub_multi(); unsub14(); unsub_col(); unsub_cols(); unsub_snapgrid(); document.removeEventListener('paste', handlePaste); };
   });
 
   /** Compute world bounding box of all elements */
@@ -2921,6 +2947,7 @@
         }
         return;
       }
+
     }
 
     // Global shortcuts
