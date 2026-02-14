@@ -8,7 +8,7 @@
   import { getModelFile, generateThumbnail, getThumbnail, preloadThumbnails } from '$lib/utils/furnitureThumbnails';
   import { onMount } from 'svelte';
   import { importRoomPlan, extractRoomJsonFromZip, ORTHO_VERSION } from '$lib/utils/roomplanImport';
-  import { currentProject, loadProject } from '$lib/stores/project';
+  import { currentProject, loadProject, importFloorIntoCurrentProject } from '$lib/stores/project';
   import type { Project } from '$lib/models/types';
 
   let activeTab = $state<'draw' | 'rooms' | 'objects'>('draw');
@@ -176,15 +176,7 @@
         orthogonal: optOrthogonal,
         mergeDistance: optMergeDistance,
       });
-      const project: Project = {
-        id: Math.random().toString(36).slice(2, 10),
-        name: importFileName,
-        floors: [floor],
-        activeFloorId: floor.id,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      loadProject(project);
+      importFloorIntoCurrentProject(floor);
     } catch (e: any) {
       alert('Failed to import RoomPlan: ' + e.message);
     }

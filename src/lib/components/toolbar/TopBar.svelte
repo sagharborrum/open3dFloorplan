@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { currentProject, viewMode, undo, redo, addFloor, removeFloor, setActiveFloor, updateProjectName, loadProject, createDefaultProject, snapEnabled, canvasZoom, panMode, showFurnitureStore } from '$lib/stores/project';
+  import { currentProject, viewMode, undo, redo, addFloor, removeFloor, setActiveFloor, updateProjectName, loadProject, createDefaultProject, snapEnabled, canvasZoom, panMode, showFurnitureStore, importFloorIntoCurrentProject } from '$lib/stores/project';
   import { localStore } from '$lib/services/datastore';
   import { get } from 'svelte/store';
   import type { Floor, Project } from '$lib/models/types';
@@ -144,17 +144,9 @@
         const data = JSON.parse(text);
         // Detect RoomPlan format (has walls array with dimensions, or rooms/doors/windows at top level)
         if (data.walls && Array.isArray(data.walls) && data.walls[0]?.dimensions) {
-          // RoomPlan JSON — import as new project
+          // RoomPlan JSON — import into current project
           const floor = importRoomPlan(data, { straighten: true, orthogonal: true });
-          const project: Project = {
-            id: Math.random().toString(36).slice(2, 10),
-            name: file.name.replace(/\.(json|zip)$/, ''),
-            floors: [floor],
-            activeFloorId: floor.id,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          };
-          loadProject(project);
+          importFloorIntoCurrentProject(floor);
         } else if (data.floors && data.id) {
           // Our own project format
           loadProject(data as Project);

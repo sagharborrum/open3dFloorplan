@@ -406,6 +406,24 @@ export function loadProject(project: Project) {
   currentProject.set(project);
 }
 
+/** Import a floor's data into the current project's active floor (replaces walls/doors/windows/furniture) */
+export function importFloorIntoCurrentProject(floor: import('$lib/models/types').Floor) {
+  const p = get(currentProject);
+  if (!p) return;
+  snapshot();
+  const activeFloorIdx = p.floors.findIndex((f) => f.id === p.activeFloorId);
+  if (activeFloorIdx === -1) return;
+  const existing = p.floors[activeFloorIdx];
+  // Merge imported data into the active floor
+  existing.walls = [...existing.walls, ...floor.walls];
+  existing.doors = [...existing.doors, ...floor.doors];
+  existing.windows = [...existing.windows, ...floor.windows];
+  existing.furniture = [...existing.furniture, ...floor.furniture];
+  if (floor.stairs) existing.stairs = [...(existing.stairs || []), ...floor.stairs];
+  if (floor.columns) existing.columns = [...(existing.columns || []), ...floor.columns];
+  currentProject.set({ ...p });
+}
+
 export const selectedRoomId = writable<string | null>(null);
 /** Detected rooms (synced from canvas room detection) */
 export const detectedRoomsStore = writable<import('$lib/models/types').Room[]>([]);
