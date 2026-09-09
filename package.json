@@ -21,7 +21,8 @@
 		"test:browser": "playwright test",
 		"test:watch": "vitest",
 		"benchmark:viewer": "playwright test --config=playwright.benchmark.config.ts",
-		"benchmark:fixtures": "node tooling/render-fixtures.mjs"
+		"benchmark:fixtures": "node tooling/render-fixtures.mjs",
+		"build:render-lab": "vite build --config tooling/render-lab-site/vite.config.ts"
 	},
 	"devDependencies": {
 		"@playwright/test": "1.63.0",
@@ -45,7 +46,9 @@
 		"dxf-writer": "^1.18.4",
 		"google-auth-library": "11.0.2",
 		"jspdf": "^4.2.1",
-		"jszip": "^3.10.1"
+		"jszip": "^3.10.1",
+		"three-gpu-pathtracer": "0.0.24",
+		"three-mesh-bvh": "0.9.10"
 	},
 	"overrides": {
 		"@sveltejs/kit": {
